@@ -1,9 +1,11 @@
 <script setup>
 import { ref, onMounted, watch } from 'vue';
 import { endpoints } from '../api.js';
+import { useRouter } from 'vue-router';
 
 // Single props definition. `id` comes from the route because router uses `props: true`.
 const props = defineProps({ me: Object, id: String });
+const router = useRouter();
 
 const playlistId = props.id;
 const contents = ref(null);
@@ -11,6 +13,9 @@ const stats = ref(null);
 const dedupe = ref(null);
 const loading = ref(false);
 const error = ref(null);
+
+// Debug mode from URL params or environment
+const showDebug = ref(new URLSearchParams(window.location.search).has('debug'));
 
 async function loadAll() {
   if (!props.me) return;
@@ -31,19 +36,68 @@ async function loadAll() {
     loading.value = false;
   }
 }
+
+function goBack() {
+  router.push('/');
+}
+
+function exportToCsv() {
+  const exportUrl = endpoints.exportPlaylist(playlistId);
+  // Create a temporary link element and trigger download
+  const link = document.createElement('a');
+  link.href = exportUrl;
+  link.download = ''; // Let the server set the filename
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+}
+
 onMounted(loadAll);
 watch(() => props.id, loadAll);
 </script>
 
 <template>
-  <section v-if="!me">
+  <section v-if="!me" class="auth-prompt">
     <p>Authenticate to view playlist details.</p>
   </section>
 
-  <section v-else>
-    <h2>Playlist: {{ playlistId }}</h2>
-    <p v-if="loading">Loading…</p>
-    <p v-if="error" style="color:#b91c1c">Error: {{ error }}</p>
+  <section v-else class="playlist-view">
+    <!-- Navigation -->
+    <div class="nav-header">
+      <button @click="goBack" class="back-btn">
+        ← Back to Playlists
+      </button>
+      <button @click="exportToCsv" class="export-btn" :disabled="!stats">
+        📄 Export to CSV
+      </button>
+    </div>
+
+    <!-- Playlist Header -->
+    <div class="playlist-header">
+      <h1>{{ stats?.playlist?.name || `Loading...` }}</h1>
+      <div class="playlist-meta">
+        <span class="spotify-id">Spotify ID: {{ playlistId }}</span>
+        <span v-if="stats?.playlist?.owner" class="owner">
+          by {{ stats.playlist.owner }}
+        </span>
+      </div>
+      <p v-if="stats?.playlist?.description" class="description">
+        {{ stats.playlist.description }}
+      </p>
+    </div>
+
+    <div v-if="loading" class="loading">Loading playlist data...</div>
+    <div v-if="error" class="error">Error: {{ error }}</div>
+
+    <!-- Debug Info (only when ?debug is in URL) -->
+    <div v-if="showDebug" class="debug-info">
+      <strong>Debug Info:</strong><br>
+      Loading: {{ loading }}<br>
+      Error: {{ error }}<br>
+      Stats loaded: {{ !!stats }}<br>
+      Contents loaded: {{ !!contents }}<br>
+      Dedupe loaded: {{ !!dedupe }}
+    </div>
 
     <div v-if="stats" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;margin-bottom:16px">
       <div style="border:1px solid #eee;border-radius:8px;padding:12px">
@@ -117,3 +171,96 @@ watch(() => props.id, loadAll);
     </div>
   </section>
 </template>
+
+<style scoped>
+.playlist-view {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 20px;
+}
+
+.nav-header {
+  margin-bottom: 20px;
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.back-btn, .export-btn {
+  background: #f8f9fa;
+  border: 1px solid #dee2e6;
+  border-radius: 8px;
+  padding: 8px 16px;
+  color: #495057;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-size: 14px;
+}
+
+.back-btn:hover, .export-btn:hover:not(:disabled) {
+  background: #e9ecef;
+  border-color: #adb5bd;
+}
+
+.export-btn {
+  background: #28a745;
+  color: white;
+  border-color: #28a745;
+}
+
+.export-btn:hover:not(:disabled) {
+  background: #218838;
+  border-color: #1e7e34;
+}
+
+.export-btn:disabled {
+  background: #6c757d;
+  border-color: #6c757d;
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.playlist-header {
+  margin-bottom: 32px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid #dee2e6;
+}
+
+.playlist-header h1 {
+  margin: 0 0 12px 0;
+  font-size: 2.5rem;
+  font-weight: 700;
+  color: #212529;
+}
+
+.playlist-meta {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+}
+
+.spotify-id {
+  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+  background: #f8f9fa;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  color: #6c757d;
+}
+
+.owner {
+  color: #6c757d;
+  font-size: 14px;
+}
+
+.debug-info {
+  background: #fff3cd;
+  border: 1px solid #ffeaa7;
+  padding: 12px;
+  border-radius: 6px;
+  margin-bottom: 20px;
+  font-size: 12px;
+  font-family: monospace;
+}
+</style>

@@ -20,12 +20,28 @@ app.decorate('authUser', (req) => authUser(req, app));
 app.register(sensible);
 app.register(cookie, { secret: process.env.SESSION_SECRET });
 app.register(cors, {
-  origin: process.env.FRONTEND_ORIGIN || true,
+  origin: process.env.FRONTEND_ORIGIN || 'http://127.0.0.1:5173',
   credentials: true
 });
 app.register(rateLimit, { max: 80, timeWindow: '30 seconds' });
 app.register(underPressure, { maxEventLoopDelay: 1000 });
 
+// in src/server.js before other routes
+app.get('/debug/cookies', (req, reply) => {
+  const authResult = app.authUser(req);
+  return {
+    cookies: req.cookies,
+    headers: {
+      origin: req.headers.origin,
+      referer: req.headers.referer,
+      host: req.headers.host,
+      userAgent: req.headers['user-agent']
+    },
+    sid: req.cookies?.sid || null,
+    authUser: authResult ? 'authenticated' : 'not authenticated',
+    corsOrigin: process.env.FRONTEND_ORIGIN || 'http://127.0.0.1:5173'
+  };
+});
 app.get('/healthz', async () => ({ ok: true }));
 app.get('/readyz', async () => {
   await prisma.$queryRaw`SELECT 1`;

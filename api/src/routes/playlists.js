@@ -31,7 +31,14 @@ export default fp(async function playlistReadRoutes(fastify) {
     if (!user) return reply.code(401).send({ error: 'unauthorized' });
 
     const { accessToken } = await ensureAccess(user.id, fastify);
-    const items = await collectAll(`/playlists/${req.params.id}/tracks`, accessToken);
+    
+    // Fetch both playlist info and tracks
+    const [playlistInfo, items] = await Promise.all([
+      fetch(`https://api.spotify.com/v1/playlists/${req.params.id}`, {
+        headers: { Authorization: `Bearer ${accessToken}` }
+      }).then(res => res.json()),
+      collectAll(`/playlists/${req.params.id}/tracks`, accessToken)
+    ]);
 
     const seenTrack = new Set();
     const artistFreq = new Map();
@@ -65,6 +72,14 @@ export default fp(async function playlistReadRoutes(fastify) {
       .map(([name,count]) => ({ name, count }));
 
     return {
+      playlist: {
+        id: playlistInfo.id,
+        name: playlistInfo.name,
+        description: playlistInfo.description,
+        owner: playlistInfo.owner?.display_name,
+        public: playlistInfo.public,
+        collaborative: playlistInfo.collaborative
+      },
       tracks_total: items.length,
       tracks_unique: seenTrack.size,
       artists_unique: artistFreq.size,
@@ -139,6 +154,101 @@ export default fp(async function playlistReadRoutes(fastify) {
     }
     return out;
   }
+
+  // Export playlist as CSV
+  fastify.get('/playlists/:id/export', async (req, reply) => {
+    const user = await fastify.authUser(req);
+    if (!user) return reply.code(401).send({ error: 'unauthorized' });
+
+    const { accessToken } = await ensureAccess(user.id, fastify);
+    
+    // Fetch both playlist info and tracks
+    const [playlistInfo, items] = await Promise.all([
+      fetch(`https://api.spotify.com/v1/playlists/${req.params.id}`, {
+        headers: { Authorization: `Bearer ${accessToken}` }
+      }).then(res => res.json()),
+      collectAll(`/playlists/${req.params.id}/tracks`, accessToken)
+    ]);
+
+    // Get user info for filename
+    const userRes = await fetch("https://api.spotify.com/v1/me", {
+      headers: { Authorization: `Bearer ${accessToken}` }
+    });
+    const userInfo = await userRes.json();
+
+    // Generate CSV content
+    const csvHeaders = [
+      'Position',
+      'Track Name',
+      'Artists',
+      'Album',
+      'Release Date',
+      'Duration (ms)',
+      'Duration (mm:ss)',
+      'Popularity',
+      'Track ID',
+      'Album ID',
+      'Artist IDs',
+      'Added At',
+      'Added By',
+      'Is Local',
+      'Preview URL',
+      'External URLs'
+    ];
+
+    const csvRows = items.map((item, index) => {
+      const track = item.track;
+      const artists = (track?.artists || []).map(a => a.name).join('; ');
+      const artistIds = (track?.artists || []).map(a => a.id).join('; ');
+      const duration = track?.duration_ms;
+      const durationFormatted = duration ? 
+        `${Math.floor(duration / 60000)}:${String(Math.floor((duration % 60000) / 1000)).padStart(2, '0')}` : 
+        '';
+
+      return [
+        index + 1,
+        track?.name || '',
+        artists,
+        track?.album?.name || '',
+        track?.album?.release_date || '',
+        duration || '',
+        durationFormatted,
+        track?.popularity || '',
+        track?.id || '',
+        track?.album?.id || '',
+        artistIds,
+        item.added_at || '',
+        item.added_by?.id || '',
+        track?.is_local || false,
+        track?.preview_url || '',
+        track?.external_urls?.spotify || ''
+      ].map(field => {
+        // Escape CSV fields that contain commas, quotes, or newlines
+        const stringField = String(field);
+        if (stringField.includes(',') || stringField.includes('"') || stringField.includes('\n')) {
+          return `"${stringField.replace(/"/g, '""')}"`;
+        }
+        return stringField;
+      }).join(',');
+    });
+
+    const csvContent = [csvHeaders.join(','), ...csvRows].join('\n');
+
+    // Generate filename with timestamp and clean playlist name
+    const timestamp = new Date().toISOString().slice(0, 19).replace(/[:\-]/g, '').replace('T', '_');
+    const spotifyId = userInfo.id || 'unknown';
+    const cleanPlaylistName = (playlistInfo.name || 'playlist')
+      .replace(/[^a-zA-Z0-9\s\-_]/g, '') // Remove special characters
+      .replace(/\s+/g, '_') // Replace spaces with underscores
+      .slice(0, 50); // Limit length
+
+    const filename = `${spotifyId}_${cleanPlaylistName}_${timestamp}.csv`;
+
+    reply
+      .header('Content-Type', 'text/csv; charset=utf-8')
+      .header('Content-Disposition', `attachment; filename="${filename}"`)
+      .send(csvContent);
+  });
 
   function pickTrack(t) {
     return {

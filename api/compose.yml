@@ -26,7 +26,7 @@ services:
       - .env
     environment:
       DATABASE_URL: postgres://playlistparser:playlistparser@db:5432/playlistparser?schema=public
-      FRONTEND_ORIGIN: http://localhost:5173
+      FRONTEND_ORIGIN: http://127.0.0.1:5173
       RUN_DB_SETUP: "true"   # entrypoint runs generate + migrate deploy
       SEED_DB: "true"        # set to "false" if you don’t want seeds
     ports:
