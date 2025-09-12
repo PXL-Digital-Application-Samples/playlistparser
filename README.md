@@ -53,7 +53,7 @@ The application consists of three main services orchestrated by Docker Compose:
 - **Progress Tracking**: Real-time progress updates during export process
 - **Smart Filenames**: Auto-generated filenames with timestamps and user identification
 
-<img src="export-progress-tracking.png" alt="Export Progress Tracking" width="600">
+<img src="assets/export-progress-tracking.png" alt="Export Progress Tracking" width="600">
 
 ### Security and Privacy
 - Secure Spotify OAuth 2.0 implementation using Authorization Code flow
@@ -70,7 +70,7 @@ The application requests minimal necessary permissions:
 - `playlist-read-collaborative`: Access to collaborative playlists
 - `user-read-email`: User profile information
 
-<img src="oauth-flow-diagram.png" alt="OAuth Flow Diagram" width="600">
+<img src="assets/oauth-flow-diagram.png" alt="OAuth Flow Diagram" width="600">
 
 ### API Rate Limiting
 - Handles Spotify's rate limiting (HTTP 429 responses)
