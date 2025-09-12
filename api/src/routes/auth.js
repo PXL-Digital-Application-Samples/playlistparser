@@ -75,14 +75,13 @@ export default fp(async function authRoutes(fastify) {
       },
     });
 
-    reply.setCookie('sid', user.id, {
-      path: '/',
+    reply.setCookie("sid", user.id, {
+      path: "/",
       httpOnly: true,
-      sameSite: 'lax',
-      secure: false // dev over http
-      // no "signed"
+      sameSite: "lax",
+      secure: false,
     });
-    reply.redirect(process.env.FRONTEND_ORIGIN || '/');
+    reply.redirect(process.env.FRONTEND_ORIGIN || "/");
   });
 });
 
