@@ -36,6 +36,60 @@ watch(() => props.me, (newMe) => {
   console.log('me prop changed:', newMe);
   if (newMe) load();
 });
+
+function sanitizeDescription(description) {
+  if (!description) return '';
+  
+  // Create a temporary div to parse the HTML
+  const tempDiv = document.createElement('div');
+  tempDiv.innerHTML = description;
+  
+  // Allow only safe tags and attributes
+  const allowedTags = ['a', 'b', 'i', 'em', 'strong', 'br'];
+  const allowedAttributes = {
+    'a': ['href', 'target', 'rel']
+  };
+  
+  // Get all elements
+  const elements = tempDiv.querySelectorAll('*');
+  
+  // Process each element
+  elements.forEach(el => {
+    const tagName = el.tagName.toLowerCase();
+    
+    // Remove disallowed tags
+    if (!allowedTags.includes(tagName)) {
+      el.replaceWith(...el.childNodes);
+      return;
+    }
+    
+    // Clean attributes
+    const allowedAttrs = allowedAttributes[tagName] || [];
+    Array.from(el.attributes).forEach(attr => {
+      if (!allowedAttrs.includes(attr.name)) {
+        el.removeAttribute(attr.name);
+      }
+    });
+    
+    // Add security attributes to links
+    if (tagName === 'a') {
+      el.setAttribute('target', '_blank');
+      el.setAttribute('rel', 'noopener noreferrer');
+    }
+  });
+  
+  return tempDiv.innerHTML;
+}
+
+function exportAllPlaylists() {
+  console.log('Export all playlists button clicked!');
+  const exportUrl = endpoints.exportAllPlaylists();
+  console.log('Export URL:', exportUrl);
+  
+  // Use window.open to trigger the download in a new tab/window
+  // This preserves cookies and handles downloads better
+  window.open(exportUrl, '_blank');
+}
 </script>
 
 <template>
@@ -48,7 +102,16 @@ watch(() => props.me, (newMe) => {
 
   <section v-else class="playlists-section">
     <div class="section-header">
-      <h2>Your Playlists</h2>
+      <div class="header-content">
+        <h2>Your Playlists</h2>
+        <button 
+          v-if="!loading && !error && playlists.length > 0" 
+          @click="exportAllPlaylists" 
+          class="export-all-btn"
+        >
+          📁 Export All Playlists
+        </button>
+      </div>
       <div v-if="loading" class="loading">Loading your playlists...</div>
       <div v-if="error" class="error">Error: {{ error }}</div>
     </div>
@@ -71,7 +134,10 @@ watch(() => props.me, (newMe) => {
             <span class="track-count">{{ p.tracks?.total ?? 0 }} tracks</span>
             <span v-if="p.owner?.display_name" class="owner">by {{ p.owner.display_name }}</span>
           </div>
-          <p v-if="p.description" class="playlist-description">{{ p.description }}</p>
+          <p v-if="p.description" 
+             class="playlist-description" 
+             v-html="sanitizeDescription(p.description)">
+          </p>
         </div>
         <div class="playlist-actions">
           <router-link :to="`/playlist/${p.id}`" class="analyze-btn">
@@ -130,11 +196,43 @@ watch(() => props.me, (newMe) => {
   margin-bottom: 32px;
 }
 
+.header-content {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
 .section-header h2 {
-  margin: 0 0 16px 0;
+  margin: 0;
   font-size: 2.5rem;
   font-weight: 700;
   color: #212529;
+}
+
+.export-all-btn {
+  background: #1db954;
+  color: white;
+  border: none;
+  padding: 12px 24px;
+  border-radius: 24px;
+  font-weight: 600;
+  font-size: 14px;
+  cursor: pointer;
+  transition: background 0.2s, transform 0.1s;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.export-all-btn:hover {
+  background: #1ed760;
+  transform: translateY(-1px);
+}
+
+.export-all-btn:active {
+  transform: translateY(0);
 }
 
 .loading {
@@ -268,13 +366,32 @@ watch(() => props.me, (newMe) => {
   margin: 0 auto;
 }
 
+.playlist-description a {
+  color: #0d6efd;
+  text-decoration: none;
+}
+
+.playlist-description a:hover {
+  text-decoration: underline;
+}
+
 @media (max-width: 768px) {
   .playlists-section {
     padding: 16px;
   }
   
+  .header-content {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  
   .section-header h2 {
     font-size: 2rem;
+  }
+  
+  .export-all-btn {
+    align-self: stretch;
+    justify-content: center;
   }
   
   .playlists-grid {

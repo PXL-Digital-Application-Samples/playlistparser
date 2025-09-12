@@ -250,6 +250,125 @@ export default fp(async function playlistReadRoutes(fastify) {
       .send(csvContent);
   });
 
+  // Export all playlists as CSV
+  fastify.get('/playlists/export-all', async (req, reply) => {
+    const user = await fastify.authUser(req);
+    if (!user) return reply.code(401).send({ error: 'unauthorized' });
+
+    const { accessToken } = await ensureAccess(user.id, fastify);
+    
+    // Get user info for filename
+    const userRes = await fetch("https://api.spotify.com/v1/me", {
+      headers: { Authorization: `Bearer ${accessToken}` }
+    });
+    const userInfo = await userRes.json();
+
+    // Get all playlists
+    const playlistsRes = await fetch("https://api.spotify.com/v1/me/playlists?limit=50", {
+      headers: { Authorization: `Bearer ${accessToken}` }
+    });
+    const playlistsData = await playlistsRes.json();
+    const playlists = playlistsData.items || [];
+
+    // Generate CSV content for all playlists
+    const csvHeaders = [
+      'Playlist Name',
+      'Playlist ID',
+      'Playlist Description',
+      'Owner',
+      'Public',
+      'Collaborative',
+      'Total Tracks',
+      'Position',
+      'Track Name',
+      'Artists',
+      'Album',
+      'Release Date',
+      'Duration (ms)',
+      'Duration (mm:ss)',
+      'Popularity',
+      'Track ID',
+      'Album ID',
+      'Artist IDs',
+      'Added At',
+      'Added By',
+      'Is Local',
+      'Preview URL',
+      'External URLs'
+    ];
+
+    const csvRows = [];
+
+    // Process each playlist
+    for (const playlist of playlists) {
+      try {
+        // Get tracks for this playlist
+        const items = await collectAll(`/playlists/${playlist.id}/tracks`, accessToken);
+        
+        // Add each track as a row
+        items.forEach((item, index) => {
+          const track = item.track;
+          const artists = (track?.artists || []).map(a => a.name).join('; ');
+          const artistIds = (track?.artists || []).map(a => a.id).join('; ');
+          const duration = track?.duration_ms;
+          const durationFormatted = duration ? 
+            `${Math.floor(duration / 60000)}:${String(Math.floor((duration % 60000) / 1000)).padStart(2, '0')}` : 
+            '';
+
+          const row = [
+            playlist.name || '',
+            playlist.id || '',
+            playlist.description || '',
+            playlist.owner?.display_name || '',
+            playlist.public || false,
+            playlist.collaborative || false,
+            playlist.tracks?.total || items.length,
+            index + 1,
+            track?.name || '',
+            artists,
+            track?.album?.name || '',
+            track?.album?.release_date || '',
+            duration || '',
+            durationFormatted,
+            track?.popularity || '',
+            track?.id || '',
+            track?.album?.id || '',
+            artistIds,
+            item.added_at || '',
+            item.added_by?.id || '',
+            track?.is_local || false,
+            track?.preview_url || '',
+            track?.external_urls?.spotify || ''
+          ].map(field => {
+            // Escape CSV fields that contain commas, quotes, or newlines
+            const stringField = String(field);
+            if (stringField.includes(',') || stringField.includes('"') || stringField.includes('\n')) {
+              return `"${stringField.replace(/"/g, '""')}"`;
+            }
+            return stringField;
+          }).join(',');
+
+          csvRows.push(row);
+        });
+      } catch (error) {
+        console.error(`Error processing playlist ${playlist.id}:`, error);
+        // Continue with other playlists
+      }
+    }
+
+    const csvContent = [csvHeaders.join(','), ...csvRows].join('\n');
+
+    // Generate filename with timestamp
+    const timestamp = new Date().toISOString().slice(0, 19).replace(/[:\-]/g, '').replace('T', '_');
+    const spotifyId = userInfo.id || 'unknown';
+    const filename = `${spotifyId}_all_playlists_${timestamp}.csv`;
+
+    reply
+      .header('Content-Type', 'text/csv; charset=utf-8')
+      .header('Content-Disposition', `attachment; filename="${filename}"`)
+      .send(csvContent);
+  });
+
   function pickTrack(t) {
     return {
       id: t.id,

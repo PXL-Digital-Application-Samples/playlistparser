@@ -44,5 +44,6 @@ export const endpoints = {
   playlistStats: (id) => apiGet(`/playlists/${id}/stats`),
   simulateDedupe: (id) => apiGet(`/playlists/${id}/simulate-dedupe`),
   simulateMerge: (a, b) => apiGet(`/simulate-merge?a=${encodeURIComponent(a)}&b=${encodeURIComponent(b)}`),
-  exportPlaylist: (id) => `${BASE}/playlists/${id}/export`
+  exportPlaylist: (id) => `${BASE}/playlists/${id}/export`,
+  exportAllPlaylists: () => `${BASE}/playlists/export-all`
 };

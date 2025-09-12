@@ -52,6 +52,50 @@ function exportToCsv() {
   document.body.removeChild(link);
 }
 
+function sanitizeDescription(description) {
+  if (!description) return '';
+  
+  // Create a temporary div to parse the HTML
+  const tempDiv = document.createElement('div');
+  tempDiv.innerHTML = description;
+  
+  // Allow only safe tags and attributes
+  const allowedTags = ['a', 'b', 'i', 'em', 'strong', 'br', 'p'];
+  const allowedAttributes = {
+    'a': ['href', 'target', 'rel']
+  };
+  
+  // Get all elements
+  const elements = tempDiv.querySelectorAll('*');
+  
+  // Process each element
+  elements.forEach(el => {
+    const tagName = el.tagName.toLowerCase();
+    
+    // Remove disallowed tags
+    if (!allowedTags.includes(tagName)) {
+      el.replaceWith(...el.childNodes);
+      return;
+    }
+    
+    // Clean attributes
+    const allowedAttrs = allowedAttributes[tagName] || [];
+    Array.from(el.attributes).forEach(attr => {
+      if (!allowedAttrs.includes(attr.name)) {
+        el.removeAttribute(attr.name);
+      }
+    });
+    
+    // Add security attributes to links
+    if (tagName === 'a') {
+      el.setAttribute('target', '_blank');
+      el.setAttribute('rel', 'noopener noreferrer');
+    }
+  });
+  
+  return tempDiv.innerHTML;
+}
+
 onMounted(loadAll);
 watch(() => props.id, loadAll);
 </script>
@@ -81,8 +125,9 @@ watch(() => props.id, loadAll);
           by {{ stats.playlist.owner }}
         </span>
       </div>
-      <p v-if="stats?.playlist?.description" class="description">
-        {{ stats.playlist.description }}
+      <p v-if="stats?.playlist?.description" 
+         class="description" 
+         v-html="sanitizeDescription(stats.playlist.description)">
       </p>
     </div>
 
@@ -262,5 +307,20 @@ watch(() => props.id, loadAll);
   margin-bottom: 20px;
   font-size: 12px;
   font-family: monospace;
+}
+
+.description {
+  color: #495057;
+  font-style: italic;
+  margin: 8px 0 0 0;
+}
+
+.description a {
+  color: #0d6efd;
+  text-decoration: none;
+}
+
+.description a:hover {
+  text-decoration: underline;
 }
 </style>
