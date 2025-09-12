@@ -53,7 +53,7 @@ The application consists of three main services orchestrated by Docker Compose:
 - **Progress Tracking**: Real-time progress updates during export process
 - **Smart Filenames**: Auto-generated filenames with timestamps and user identification
 
-<img src="assets/export-progress-tracking.png" alt="Export Progress Tracking" width="600">
+<img src="assets/export-progress-tracking.png" alt="Export Progress Tracking" width="300">
 
 ### Security and Privacy
 - Secure Spotify OAuth 2.0 implementation using Authorization Code flow
