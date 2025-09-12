@@ -2,7 +2,7 @@
 
 A comprehensive Spotify playlist analyzer built with Vue.js frontend and Fastify backend. Analyze your playlists, export data to CSV, visualize your musical taste, and simulate playlist operations without making changes to your actual playlists.
 
-<img src="application-overview.png" alt="Application Overview" width="600">
+<img src="assets/application-overview.png" alt="Application Overview" width="600">
 
 ## Architecture
 
@@ -38,7 +38,7 @@ The application consists of three main services orchestrated by Docker Compose:
 
 ## Features
 
-<img src="playlist-analysis-features.png" alt="Playlist Analysis Features" width="600">
+<img src="assets/playlist-analysis-features.png" alt="Playlist Analysis Features" width="600">
 
 ### Playlist Analysis
 - View all Spotify playlists (owned and followed)
