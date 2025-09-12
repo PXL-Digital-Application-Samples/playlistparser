@@ -2,6 +2,8 @@
 
 A comprehensive Spotify playlist analyzer built with Vue.js frontend and Fastify backend. Analyze your playlists, export data to CSV, visualize your musical taste, and simulate playlist operations without making changes to your actual playlists.
 
+<img src="image.png" alt="Application Overview" width="600">
+
 ## Architecture
 
 The application consists of three main services orchestrated by Docker Compose:
@@ -36,6 +38,8 @@ The application consists of three main services orchestrated by Docker Compose:
 
 ## Features
 
+<img src="image-1.png" alt="Playlist Analysis Features" width="600">
+
 ### Playlist Analysis
 - View all Spotify playlists (owned and followed)
 - Detailed track statistics including artists, albums, popularity scores
@@ -48,6 +52,8 @@ The application consists of three main services orchestrated by Docker Compose:
 - **Bulk Export**: All playlists exported to a single comprehensive CSV file
 - **Progress Tracking**: Real-time progress updates during export process
 - **Smart Filenames**: Auto-generated filenames with timestamps and user identification
+
+<img src="image-2.png" alt="Export Progress Tracking" width="600">
 
 ### Security and Privacy
 - Secure Spotify OAuth 2.0 implementation using Authorization Code flow
@@ -63,6 +69,8 @@ The application requests minimal necessary permissions:
 - `playlist-read-private`: Access to private playlists
 - `playlist-read-collaborative`: Access to collaborative playlists
 - `user-read-email`: User profile information
+
+<img src="image-3.png" alt="OAuth Flow Diagram" width="600">
 
 ### API Rate Limiting
 - Handles Spotify's rate limiting (HTTP 429 responses)
