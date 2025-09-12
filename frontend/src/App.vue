@@ -29,7 +29,7 @@ onMounted(loadMe);
 <template>
   <header class="app-header">
     <div class="logo">
-      <strong>Playlist Parser</strong>
+      <strong>PXL Playlist Parser</strong>
     </div>
     <div class="user-section">
       <div v-if="loading" class="loading-indicator">…</div>
