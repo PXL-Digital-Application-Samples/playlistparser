@@ -1,9 +1,9 @@
 import Fastify from 'fastify';
 import sensible from '@fastify/sensible';
-import cors from 'fastify-cors';
-import cookie from 'fastify-cookie';
-import underPressure from 'fastify-under-pressure';
-import rateLimit from 'fastify-rate-limit';
+import cors from '@fastify/cors';
+import cookie from '@fastify/cookie';
+import underPressure from '@fastify/under-pressure';
+import rateLimit from '@fastify/rate-limit';
 import client from 'prom-client';
 import { prisma } from './lib/db.js';
 

@@ -1,64 +1,111 @@
-Env vars
+# playlistparser-api
 
-Common: NODE_ENV, LOG_LEVEL
+Backend service for the **playlistparser** coursework project.
+Built with **Fastify**, **Prisma**, and **PostgreSQL**.
+Integrates with the **Spotify Web API** for OAuth and playlist data.
 
-API: SPOTIFY_CLIENT_ID, SPOTIFY_CLIENT_SECRET, SPOTIFY_REDIRECT_URI, SESSION_SECRET, DATABASE_URL, FRONTEND_ORIGIN
+## Environment variables
 
-Frontend (Vite): VITE_API_BASE_URL (Vite exposes import.meta.env.*, prefix required). 
-vitejs
+**Common**
 
-OAuth and scopes
+* `NODE_ENV` — `development` or `production`
+* `LOG_LEVEL` — Fastify log level (default: `info`)
 
-Server handles the Authorization Code flow. Scopes: playlist-read-private, playlist-read-collaborative, playlist-modify-public, playlist-modify-private, user-read-email. Prefer server flow; use PKCE only if you must start auth in the SPA. 
-Spotify for Developers
-+2
-Spotify for Developers
-+2
+**API**
 
-Spotify API notes
+* `PORT` — port to listen on (default: 3000)
+* `SESSION_SECRET` — secret for signing cookies (32+ chars recommended)
+* `TOKEN_ENC_KEY` — 32-byte hex key for encrypting refresh tokens
+* `DATABASE_URL` — PostgreSQL connection string
+* `SPOTIFY_CLIENT_ID` — from [Spotify Developer Dashboard](https://developer.spotify.com/dashboard)
+* `SPOTIFY_CLIENT_SECRET` — from dashboard
+* `SPOTIFY_REDIRECT_URI` — must match dashboard, e.g. `http://localhost:3000/auth/callback`
+* `FRONTEND_ORIGIN` — URL of the frontend, e.g. `http://localhost:5173`
 
-Create playlist endpoint exists and needs playlist-modify scopes. Handle 429 with retry-after. Spotify uses a rolling 30-second window. 
-Spotify for Developers
-+1
+**Frontend (Vite)**
 
-Features suited for coursework
+* `VITE_API_BASE_URL` — base URL of this API (Vite requires the `VITE_` prefix).
 
-Login with Spotify. Persist user + tokens.
+## OAuth and scopes
 
-“Merge” playlists the user owns or follows.
+This server implements the **Authorization Code** flow.
+Scopes used (read-only):
 
-Deduplicate playlist items by track ID.
+* `playlist-read-private`
+* `playlist-read-collaborative`
+* `user-read-email`
 
-Sort and slice by artist, album, release date, popularity.
+Server-side OAuth is strongly preferred. PKCE is not required unless starting the flow in the SPA.
 
-Snapshot playlists to DB and restore from a snapshot.
+## Spotify API notes
 
-Scheduled nightly snapshot via Kubernetes CronJob hitting /tasks/snapshot.
+* **No write endpoints** are exposed. The project never creates, modifies, or deletes playlists.
+* Rate limits: Spotify may respond with HTTP 429 and a `Retry-After` header (sliding 30-second window).
+* Always inspect headers before retrying.
 
-Admin metrics at /metrics (Prometheus). Health probes at /healthz and /readyz.
+## Features (coursework focus)
 
-Minimal API surface
-GET  /auth/login              # redirects to Spotify
-GET  /auth/callback
-GET  /me                      # current user profile
-GET  /me/playlists            # user playlists
-POST /playlists               # create a playlist
-POST /playlists/:id/items     # add tracks
-DELETE /playlists/:id/items   # remove tracks
-POST /playlists/:id/dedupe
-POST /playlists/:id/merge     # body: { sourcePlaylistIds: [] }
-POST /playlists/:id/snapshots # create snapshot
-GET  /playlists/:id/snapshots
-POST /playlists/:id/restore   # body: { snapshotId }
+* Login with Spotify (OAuth)
+* Persist user profile + tokens in Postgres (via Prisma)
+* Report on playlists the user owns or follows
+* Inspect playlist contents (tracks, artists, albums)
+* Stats: counts, unique artists, top artists, release date ranges, average popularity
+* Simulate deduplication (report duplicate tracks, but don't delete)
+* Simulate merge (compare two playlists, report union/intersection sizes)
+* Admin metrics:
+
+  * `/metrics` → Prometheus format
+  * `/healthz` and `/readyz` → liveness/readiness
+
+## API surface
+
+```
+GET  /auth/login                 # start OAuth with Spotify
+GET  /auth/callback              # handle OAuth redirect
+
+GET  /me                         # current user profile
+GET  /me/playlists               # list user playlists
+
+GET  /playlists/:id/contents     # playlist tracks (compact)
+GET  /playlists/:id/stats        # playlist statistics
+GET  /playlists/:id/simulate-dedupe
+                                 # detect duplicates (non-destructive)
+GET  /simulate-merge?a=PL1&b=PL2 # compare two playlists
+
 GET  /healthz | /readyz | /metrics
+```
 
-Data model (Prisma)
-User(id, spotifyId, email, displayName, createdAt)
-Token(userId FK, accessToken, refreshTokenEncrypted, expiresAt, scope)
-PlaylistLocal(id, spotifyId, ownerUserId FK, name, lastSyncedAt)
-Snapshot(id, playlistLocalId FK, createdAt, trackIds JSONB)
+## Data model (Prisma)
 
-Frontend
+```prisma
+model User {
+  id           String   @id @default(cuid())
+  spotifyId    String   @unique
+  email        String?
+  displayName  String?
+  createdAt    DateTime @default(now())
+  tokens       Token?
+}
 
-Vue 3 + Vite. Login button hits /auth/login. Views: Dashboard (playlists), Playlist Detail (dedupe, merge, snapshots). Use fetch to VITE_API_BASE_URL. Vite env pattern per docs. 
-vitejs
+model Token {
+  userId      String   @id
+  accessToken String
+  refreshEnc  String
+  scope       String
+  expiresAt   DateTime
+  user        User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+```
+
+## Frontend
+
+* Vue 3 + Vite (separate `/frontend` project)
+* Login button → `/auth/login`
+* Views:
+
+  * **Dashboard**: list playlists
+  * **Playlist detail**: view contents, run dedupe/merge simulations
+* Use `fetch` against `VITE_API_BASE_URL`
+* Follow [Vite env conventions](https://vitejs.dev/guide/env-and-mode.html)
+
+---

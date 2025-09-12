@@ -27,24 +27,15 @@ services:
     environment:
       DATABASE_URL: postgres://playlistparser:playlistparser@db:5432/playlistparser?schema=public
       FRONTEND_ORIGIN: http://localhost:5173
-      RUN_DB_SETUP: "true"
-      SEED_DB: "true"   # set to "false" for real testing
+      RUN_DB_SETUP: "true"   # entrypoint runs generate + migrate deploy
+      SEED_DB: "true"        # set to "false" if you don’t want seeds
     ports:
       - "3000:3000"
     healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://localhost:3000/healthz"]
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3000/healthz || exit 1"]
       interval: 10s
       timeout: 3s
       retries: 10
-
-  migrate:
-    build: .
-    command: npx prisma migrate deploy
-    environment:
-      DATABASE_URL: postgres://playlistparser:playlistparser@db:5432/playlistparser?schema=public
-    depends_on:
-      db:
-        condition: service_healthy
 
 volumes:
   db_data:

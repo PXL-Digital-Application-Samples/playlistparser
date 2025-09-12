@@ -2,7 +2,7 @@ FROM node:22-alpine
 WORKDIR /app
 ENV NODE_ENV=development
 COPY package*.json ./
-RUN npm ci
+RUN npm install
 COPY prisma ./prisma
 COPY src ./src
 COPY docker/entrypoint.sh ./entrypoint.sh
