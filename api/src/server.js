@@ -20,7 +20,7 @@ app.decorate('authUser', (req) => authUser(req, app));
 app.register(sensible);
 app.register(cookie, { secret: process.env.SESSION_SECRET });
 app.register(cors, {
-  origin: process.env.FRONTEND_ORIGIN || 'http://127.0.0.1:5173',
+  origin: true,  // Allow all origins (permissive for k8s deployment)
   credentials: true
 });
 app.register(rateLimit, { max: 80, timeWindow: '30 seconds' });
