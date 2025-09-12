@@ -23,7 +23,7 @@ export default fp(async function meRoutes(fastify) {
 });
 
 export async function authUser(req, fastify) {
-  const sid = req.unsignCookie(req.cookies.sid || '').value;
+  const sid = req.cookies.sid;            // no unsign
   if (!sid) return null;
   return fastify.prisma.user.findUnique({ where: { id: sid } });
 }

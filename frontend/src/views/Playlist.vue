@@ -1,10 +1,11 @@
 <script setup>
 import { ref, onMounted, watch } from 'vue';
 import { endpoints } from '../api.js';
-const props = defineProps({ me: Object, id: String });
-const routeProps = defineProps(['id']); // for route param via props
 
-const playlistId = routeProps.id;
+// Single props definition. `id` comes from the route because router uses `props: true`.
+const props = defineProps({ me: Object, id: String });
+
+const playlistId = props.id;
 const contents = ref(null);
 const stats = ref(null);
 const dedupe = ref(null);
@@ -31,7 +32,7 @@ async function loadAll() {
   }
 }
 onMounted(loadAll);
-watch(() => playlistId, loadAll);
+watch(() => props.id, loadAll);
 </script>
 
 <template>

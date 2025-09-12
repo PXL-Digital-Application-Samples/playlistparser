@@ -4,19 +4,19 @@ import { endpoints } from './api.js';
 
 const me = ref(null);
 const loading = ref(true);
-const error = ref(null);
 
 async function loadMe() {
   loading.value = true;
-  error.value = null;
-  try {
-    me.value = await endpoints.me();
-  } catch (e) {
-    me.value = null;
-  } finally {
-    loading.value = false;
-  }
+  try { me.value = await endpoints.me(); } catch { me.value = null; }
+  loading.value = false;
 }
+
+// Force a full-page nav to the API endpoint
+function goLogin() {
+  const base = import.meta.env.VITE_API_BASE_URL;
+  window.location.href = `${base}/auth/login`;
+}
+
 onMounted(loadMe);
 </script>
 
@@ -25,12 +25,13 @@ onMounted(loadMe);
     <div><strong>playlistparser</strong></div>
     <div v-if="loading">…</div>
     <div v-else-if="me">Hello, {{ me.displayName || me.email || me.spotifyId }}</div>
-    <div v-else><a :href="endpoints.login()">Login with Spotify</a></div>
+    <div v-else><a :href="import.meta.env.VITE_API_BASE_URL + '/auth/login'">Login with Spotify</a></div>
   </header>
   <main style="max-width:960px;margin:24px auto;padding:0 12px">
     <router-view :me="me" />
   </main>
 </template>
+
 
 <script>
 export default { methods: { endpoints } };
