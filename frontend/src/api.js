@@ -14,8 +14,30 @@ export async function apiGet(path) {
   return data;
 }
 
+export async function apiPost(path, data = {}) {
+  const res = await fetch(`${BASE}${path}`, { 
+    method: 'POST',
+    credentials: 'include',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify(data)
+  });
+  console.log(`API POST to ${path}:`, {
+    url: `${BASE}${path}`,
+    status: res.status,
+    ok: res.ok,
+    headers: Object.fromEntries(res.headers.entries())
+  });
+  if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
+  const responseData = await res.json();
+  console.log(`API response for POST ${path}:`, responseData);
+  return responseData;
+}
+
 export const endpoints = {
   login: () => `${BASE}/auth/login`,
+  logout: () => apiPost('/auth/logout'),
   me: () => apiGet('/me'),
   playlists: () => apiGet('/me/playlists'),
   playlistContents: (id) => apiGet(`/playlists/${id}/contents`),

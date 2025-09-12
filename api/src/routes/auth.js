@@ -83,6 +83,24 @@ export default fp(async function authRoutes(fastify) {
     });
     reply.redirect(process.env.FRONTEND_ORIGIN || "/");
   });
+
+  // Logout endpoint
+  fastify.post("/auth/logout", async (req, reply) => {
+    const userId = req.cookies.sid;
+    
+    // Clear the session cookie
+    reply.clearCookie("sid", {
+      path: "/",
+      httpOnly: true,
+      sameSite: "lax",
+      secure: false,
+    });
+
+    // Optionally, you could also delete the user's token from the database
+    // but keeping it allows for seamless re-login without re-authorization
+    
+    return { success: true, message: "Logged out successfully" };
+  });
 });
 
 function cryptoRandom() {

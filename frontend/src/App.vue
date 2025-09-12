@@ -11,6 +11,18 @@ async function loadMe() {
   try { me.value = await endpoints.me(); } catch { me.value = null; }
   loading.value = false;
 }
+
+async function logout() {
+  try {
+    await endpoints.logout();
+    me.value = null;
+    // Optionally redirect to home or show a message
+  } catch (error) {
+    console.error('Logout failed:', error);
+    // Even if logout fails on server, clear local state
+    me.value = null;
+  }
+}
 onMounted(loadMe);
 </script>
 
@@ -22,7 +34,10 @@ onMounted(loadMe);
     <div class="user-section">
       <div v-if="loading" class="loading-indicator">…</div>
       <div v-else-if="me" class="user-info">
-        Hello, <strong>{{ me.displayName || me.email || me.spotifyId }}</strong>
+        <span>Hello, <strong>{{ me.displayName || me.email || me.spotifyId }}</strong></span>
+        <button @click="logout" class="logout-btn" title="Logout">
+          ×
+        </button>
       </div>
       <div v-else>
         <a :href="LOGIN_URL" class="login-btn">
@@ -92,6 +107,32 @@ code {
 .user-info {
   color: #495057;
   font-size: 14px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.logout-btn {
+  background: none;
+  border: none;
+  color: #6c757d;
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 4px;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+}
+
+.logout-btn:hover {
+  background: #f8f9fa;
+  color: #dc3545;
+  transform: scale(1.1);
 }
 
 .login-btn {
