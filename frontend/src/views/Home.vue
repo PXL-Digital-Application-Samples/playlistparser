@@ -6,6 +6,8 @@ const props = defineProps({ me: Object });
 const playlists = ref([]);
 const loading = ref(false);
 const error = ref(null);
+const exportLoading = ref(false);
+const exportProgress = ref(null);
 const showDebug = ref(new URLSearchParams(window.location.search).has('debug'));
 
 async function load() {
@@ -81,14 +83,65 @@ function sanitizeDescription(description) {
   return tempDiv.innerHTML;
 }
 
-function exportAllPlaylists() {
+async function exportAllPlaylists() {
   console.log('Export all playlists button clicked!');
-  const exportUrl = endpoints.exportAllPlaylists();
-  console.log('Export URL:', exportUrl);
   
-  // Use window.open to trigger the download in a new tab/window
-  // This preserves cookies and handles downloads better
-  window.open(exportUrl, '_blank');
+  if (exportLoading.value) {
+    console.log('Export already in progress, ignoring click');
+    return;
+  }
+  
+  try {
+    exportLoading.value = true;
+    exportProgress.value = { status: 'starting', current: 0, total: 0 };
+    
+    // Start the export process
+    const result = await endpoints.startExportAll();
+    const jobId = result.jobId;
+    console.log('Export job started with ID:', jobId);
+    
+    // Poll for progress
+    const pollProgress = async () => {
+      try {
+        const progress = await endpoints.getExportProgress(jobId);
+        exportProgress.value = progress;
+        console.log('Progress update:', progress);
+        
+        if (progress.status === 'completed') {
+          // Download the file
+          console.log('Export completed, starting download...');
+          const downloadUrl = endpoints.downloadExport(jobId);
+          window.open(downloadUrl, '_blank');
+          
+          // Clean up
+          exportLoading.value = false;
+          exportProgress.value = null;
+        } else if (progress.status === 'error') {
+          console.error('Export failed:', progress.error);
+          exportLoading.value = false;
+          exportProgress.value = null;
+          error.value = `Export failed: ${progress.error}`;
+        } else {
+          // Continue polling
+          setTimeout(pollProgress, 1000);
+        }
+      } catch (pollError) {
+        console.error('Error polling progress:', pollError);
+        exportLoading.value = false;
+        exportProgress.value = null;
+        error.value = 'Failed to check export progress';
+      }
+    };
+    
+    // Start polling after a short delay
+    setTimeout(pollProgress, 500);
+    
+  } catch (exportError) {
+    console.error('Error starting export:', exportError);
+    exportLoading.value = false;
+    exportProgress.value = null;
+    error.value = `Failed to start export: ${exportError.message}`;
+  }
 }
 </script>
 
@@ -104,13 +157,50 @@ function exportAllPlaylists() {
     <div class="section-header">
       <div class="header-content">
         <h2>Your Playlists</h2>
-        <button 
-          v-if="!loading && !error && playlists.length > 0" 
-          @click="exportAllPlaylists" 
-          class="export-all-btn"
-        >
-          📁 Export All Playlists
-        </button>
+        <div class="export-section">
+          <button 
+            v-if="!loading && !error && playlists.length > 0" 
+            @click="exportAllPlaylists" 
+            :disabled="exportLoading"
+            class="export-all-btn"
+            :class="{ 'loading': exportLoading }"
+          >
+            <span v-if="!exportLoading">📁 Export All Playlists</span>
+            <span v-else class="loading-content">
+              <span class="spinner"></span>
+              <span v-if="exportProgress">
+                <span v-if="exportProgress.status === 'starting'">Starting...</span>
+                <span v-else-if="exportProgress.status === 'fetching_playlists'">Getting playlists...</span>
+                <span v-else-if="exportProgress.status === 'processing'">
+                  Processing {{ exportProgress.current }}/{{ exportProgress.total }}
+                </span>
+                <span v-else>Exporting...</span>
+              </span>
+              <span v-else>Exporting...</span>
+            </span>
+          </button>
+          <div v-if="exportLoading && exportProgress" class="export-progress">
+            <div class="progress-info">
+              <div v-if="exportProgress.status === 'processing' && exportProgress.currentPlaylist" class="current-playlist">
+                📀 {{ exportProgress.currentPlaylist }}
+              </div>
+              <div v-if="exportProgress.total > 0" class="progress-bar-container">
+                <div class="progress-bar">
+                  <div 
+                    class="progress-fill" 
+                    :style="{ width: `${(exportProgress.current / exportProgress.total) * 100}%` }"
+                  ></div>
+                </div>
+                <div class="progress-text">
+                  {{ exportProgress.current }} / {{ exportProgress.total }} playlists
+                </div>
+              </div>
+            </div>
+          </div>
+          <div v-else-if="exportLoading" class="export-warning">
+            ⏳ Processing all playlists - this may take 1-2 minutes depending on your library size
+          </div>
+        </div>
       </div>
       <div v-if="loading" class="loading">Loading your playlists...</div>
       <div v-if="error" class="error">Error: {{ error }}</div>
@@ -199,9 +289,16 @@ function exportAllPlaylists() {
 .header-content {
   display: flex;
   justify-content: space-between;
-  align-items: center;
+  align-items: flex-start;
   flex-wrap: wrap;
   gap: 16px;
+}
+
+.export-section {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
 }
 
 .section-header h2 {
@@ -220,19 +317,115 @@ function exportAllPlaylists() {
   font-weight: 600;
   font-size: 14px;
   cursor: pointer;
-  transition: background 0.2s, transform 0.1s;
+  transition: background 0.2s, transform 0.1s, opacity 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 200px;
+  justify-content: center;
+}
+
+.export-all-btn:hover:not(:disabled) {
+  background: #1ed760;
+  transform: translateY(-1px);
+}
+
+.export-all-btn:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.export-all-btn:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.export-all-btn.loading {
+  background: #1db954;
+}
+
+.loading-content {
   display: flex;
   align-items: center;
   gap: 8px;
 }
 
-.export-all-btn:hover {
-  background: #1ed760;
-  transform: translateY(-1px);
+.spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top: 2px solid white;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
 }
 
-.export-all-btn:active {
-  transform: translateY(0);
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.export-warning {
+  background: #fff3cd;
+  color: #856404;
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  border: 1px solid #ffeaa7;
+  max-width: 250px;
+  text-align: center;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.export-progress {
+  background: #e8f5e8;
+  border: 1px solid #c3e6c3;
+  border-radius: 8px;
+  padding: 12px;
+  max-width: 300px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.progress-info {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.current-playlist {
+  font-size: 12px;
+  color: #2d5a2d;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.progress-bar-container {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.progress-bar {
+  width: 100%;
+  height: 8px;
+  background: #d4edda;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  background: #28a745;
+  border-radius: 4px;
+  transition: width 0.3s ease;
+}
+
+.progress-text {
+  font-size: 11px;
+  color: #2d5a2d;
+  text-align: center;
+  font-weight: 500;
 }
 
 .loading {
@@ -385,6 +578,11 @@ function exportAllPlaylists() {
     align-items: flex-start;
   }
   
+  .export-section {
+    align-items: stretch;
+    width: 100%;
+  }
+  
   .section-header h2 {
     font-size: 2rem;
   }
@@ -392,6 +590,15 @@ function exportAllPlaylists() {
   .export-all-btn {
     align-self: stretch;
     justify-content: center;
+  }
+  
+  .export-warning {
+    max-width: none;
+    text-align: left;
+  }
+  
+  .export-progress {
+    max-width: none;
   }
   
   .playlists-grid {

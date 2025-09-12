@@ -1,6 +1,9 @@
 import fp from 'fastify-plugin';
 import { ensureAccess } from './util.js';
 
+// In-memory store for export progress tracking
+const exportProgress = new Map();
+
 export default fp(async function playlistReadRoutes(fastify) {
   // List a playlist's raw contents (paged fetch, returned compact)
   fastify.get('/playlists/:id/contents', async (req, reply) => {
@@ -250,6 +253,52 @@ export default fp(async function playlistReadRoutes(fastify) {
       .send(csvContent);
   });
 
+  // Get export progress
+  fastify.get('/playlists/export-progress/:jobId', async (req, reply) => {
+    const user = await fastify.authUser(req);
+    if (!user) return reply.code(401).send({ error: 'unauthorized' });
+
+    const { jobId } = req.params;
+    const progress = exportProgress.get(jobId);
+    
+    if (!progress) {
+      return reply.code(404).send({ error: 'job_not_found' });
+    }
+
+    return progress;
+  });
+
+  // Start export all playlists process
+  fastify.post('/playlists/export-all', async (req, reply) => {
+    const user = await fastify.authUser(req);
+    if (!user) return reply.code(401).send({ error: 'unauthorized' });
+
+    // Generate a unique job ID
+    const jobId = `export_${user.id}_${Date.now()}`;
+    
+    // Initialize progress tracking
+    exportProgress.set(jobId, {
+      status: 'starting',
+      current: 0,
+      total: 0,
+      currentPlaylist: null,
+      downloadUrl: null,
+      error: null
+    });
+
+    // Start the export process asynchronously
+    processExportAll(jobId, user.id, fastify).catch(error => {
+      console.error('Export process error:', error);
+      const progress = exportProgress.get(jobId);
+      if (progress) {
+        progress.status = 'error';
+        progress.error = error.message;
+      }
+    });
+
+    return { jobId };
+  });
+
   // Export all playlists as CSV
   fastify.get('/playlists/export-all', async (req, reply) => {
     const user = await fastify.authUser(req);
@@ -367,6 +416,165 @@ export default fp(async function playlistReadRoutes(fastify) {
       .header('Content-Type', 'text/csv; charset=utf-8')
       .header('Content-Disposition', `attachment; filename="${filename}"`)
       .send(csvContent);
+  });
+
+  async function processExportAll(jobId, userId, fastify) {
+    const progress = exportProgress.get(jobId);
+    if (!progress) return;
+
+    try {
+      progress.status = 'fetching_playlists';
+      
+      const { accessToken } = await ensureAccess(userId, fastify);
+      
+      // Get user info for filename
+      const userRes = await fetch("https://api.spotify.com/v1/me", {
+        headers: { Authorization: `Bearer ${accessToken}` }
+      });
+      const userInfo = await userRes.json();
+
+      // Get all playlists
+      const playlistsRes = await fetch("https://api.spotify.com/v1/me/playlists?limit=50", {
+        headers: { Authorization: `Bearer ${accessToken}` }
+      });
+      const playlistsData = await playlistsRes.json();
+      const playlists = playlistsData.items || [];
+
+      progress.total = playlists.length;
+      progress.status = 'processing';
+
+      // Generate CSV content for all playlists
+      const csvHeaders = [
+        'Playlist Name',
+        'Playlist ID',
+        'Playlist Description',
+        'Owner',
+        'Public',
+        'Collaborative',
+        'Total Tracks',
+        'Position',
+        'Track Name',
+        'Artists',
+        'Album',
+        'Release Date',
+        'Duration (ms)',
+        'Duration (mm:ss)',
+        'Popularity',
+        'Track ID',
+        'Album ID',
+        'Artist IDs',
+        'Added At',
+        'Added By',
+        'Is Local',
+        'Preview URL',
+        'External URLs'
+      ];
+
+      const csvRows = [];
+
+      // Process each playlist
+      for (let i = 0; i < playlists.length; i++) {
+        const playlist = playlists[i];
+        progress.current = i + 1;
+        progress.currentPlaylist = playlist.name;
+
+        try {
+          // Get tracks for this playlist
+          const items = await collectAll(`/playlists/${playlist.id}/tracks`, accessToken);
+          
+          // Add each track as a row
+          items.forEach((item, index) => {
+            const track = item.track;
+            const artists = (track?.artists || []).map(a => a.name).join('; ');
+            const artistIds = (track?.artists || []).map(a => a.id).join('; ');
+            const duration = track?.duration_ms;
+            const durationFormatted = duration ? 
+              `${Math.floor(duration / 60000)}:${String(Math.floor((duration % 60000) / 1000)).padStart(2, '0')}` : 
+              '';
+
+            const row = [
+              playlist.name || '',
+              playlist.id || '',
+              playlist.description || '',
+              playlist.owner?.display_name || '',
+              playlist.public || false,
+              playlist.collaborative || false,
+              playlist.tracks?.total || items.length,
+              index + 1,
+              track?.name || '',
+              artists,
+              track?.album?.name || '',
+              track?.album?.release_date || '',
+              duration || '',
+              durationFormatted,
+              track?.popularity || '',
+              track?.id || '',
+              track?.album?.id || '',
+              artistIds,
+              item.added_at || '',
+              item.added_by?.id || '',
+              track?.is_local || false,
+              track?.preview_url || '',
+              track?.external_urls?.spotify || ''
+            ].map(field => {
+              // Escape CSV fields that contain commas, quotes, or newlines
+              const stringField = String(field);
+              if (stringField.includes(',') || stringField.includes('"') || stringField.includes('\n')) {
+                return `"${stringField.replace(/"/g, '""')}"`;
+              }
+              return stringField;
+            }).join(',');
+
+            csvRows.push(row);
+          });
+        } catch (error) {
+          console.error(`Error processing playlist ${playlist.id}:`, error);
+          // Continue with other playlists
+        }
+      }
+
+      const csvContent = [csvHeaders.join(','), ...csvRows].join('\n');
+
+      // Generate filename with timestamp
+      const timestamp = new Date().toISOString().slice(0, 19).replace(/[:\-]/g, '').replace('T', '_');
+      const spotifyId = userInfo.id || 'unknown';
+      const filename = `${spotifyId}_all_playlists_${timestamp}.csv`;
+
+      // In a real app, you'd save this to a file storage service
+      // For now, we'll store it in memory temporarily
+      progress.status = 'completed';
+      progress.downloadUrl = `/playlists/download/${jobId}`;
+      progress.csvContent = csvContent;
+      progress.filename = filename;
+
+      // Clean up after 10 minutes
+      setTimeout(() => {
+        exportProgress.delete(jobId);
+      }, 10 * 60 * 1000);
+
+    } catch (error) {
+      console.error('Export processing error:', error);
+      progress.status = 'error';
+      progress.error = error.message;
+    }
+  }
+
+  // Download completed export
+  fastify.get('/playlists/download/:jobId', async (req, reply) => {
+    const user = await fastify.authUser(req);
+    if (!user) return reply.code(401).send({ error: 'unauthorized' });
+
+    const { jobId } = req.params;
+    const progress = exportProgress.get(jobId);
+    
+    if (!progress || progress.status !== 'completed') {
+      return reply.code(404).send({ error: 'file_not_ready' });
+    }
+
+    reply
+      .header('Content-Type', 'text/csv; charset=utf-8')
+      .header('Content-Disposition', `attachment; filename="${progress.filename}"`)
+      .send(progress.csvContent);
   });
 
   function pickTrack(t) {
