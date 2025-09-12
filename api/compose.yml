@@ -1,0 +1,33 @@
+services:
+  db:
+    image: postgres:17-alpine
+    container_name: playlistparser-db
+    environment:
+      POSTGRES_DB: playlistparser
+      POSTGRES_USER: playlistparser
+      POSTGRES_PASSWORD: playlistparser
+    ports:
+      - "5432:5432"
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  api:
+    build: ./api
+    environment:
+      DATABASE_URL: postgres://playlistparser:playlistparser@db:5432/playlistparser?schema=public
+      FRONTEND_ORIGIN: http://localhost:5173
+      RUN_DB_SETUP: "true"
+      SEED_DB: "true"      # set to "false" for real testing
+    ports: ["3000:3000"]
+    depends_on:
+      db:
+        condition: service_healthy
+
+
+volumes:
+  db_data:
