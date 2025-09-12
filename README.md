@@ -31,9 +31,9 @@ A comprehensive Spotify playlist analyzer built with Vue.js frontend and Fastify
    ```
 
 4. **Access the application**
-   - Frontend: http://localhost:5173
-   - API: http://localhost:3000
-   - Database: localhost:5432
+   - Frontend: http://127.0.0.1:5173
+   - API: http://127.0.0.1:3000
+   - Database: 127.0.0.1:5432
 
 ## Architecture
 
@@ -237,7 +237,7 @@ GET  /metrics                        # Prometheus metrics
    cd frontend
    npm install
    npm run dev
-   # Frontend available at http://localhost:5173
+   # Frontend available at http://127.0.0.1:5173
    ```
 
 3. **Full Stack Development**
@@ -290,7 +290,7 @@ docker compose build --no-cache
 
 1. **Environment Variables**
    - Set `NODE_ENV=production` in API .env file
-   - Use production domain URLs instead of localhost
+   - Use production domain URLs instead of 127.0.0.1
    - Generate strong random values for `TOKEN_ENC_KEY` and `SESSION_SECRET`
    - Configure proper `SPOTIFY_REDIRECT_URI` for your domain
 
@@ -339,7 +339,7 @@ docker compose up -d
 - Ensure sufficient Spotify API quota
 
 **"Frontend won't load"**
-- Verify API service is healthy: `curl http://localhost:3000/healthz`
+- Verify API service is healthy: `curl http://127.0.0.1:3000/healthz`
 - Check VITE_API_BASE_URL points to correct API endpoint
 - Ensure frontend build completed successfully
 
@@ -349,10 +349,10 @@ docker compose up -d
 docker compose ps
 
 # Test API health
-curl http://localhost:3000/healthz
+curl http://127.0.0.1:3000/healthz
 
 # Test frontend
-curl http://localhost:5173
+curl http://127.0.0.1:5173
 
 # Database connectivity
 docker compose exec db pg_isready -U playlistparser -d playlistparser
