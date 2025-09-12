@@ -66,7 +66,7 @@ SPOTIFY_CLIENT_SECRET=your_client_secret_here
 SPOTIFY_REDIRECT_URI=http://127.0.0.1:3000/auth/callback
 ```
 
-⚠️ **Important Notes:**
+⚠️ **VERY Important Notes:**
 
 * The redirect URI must match exactly what you configured in Spotify Dashboard
 * Use `127.0.0.1` instead of `localhost` for consistency
