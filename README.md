@@ -20,7 +20,7 @@ The application consists of three main services orchestrated by Docker Compose:
 
 - **Technology**: Node.js with Fastify framework and Prisma ORM
 - **Port**: 3000
-- **Purpose**: 
+- **Purpose**:
   - Spotify OAuth authentication and token management
   - Playlist data retrieval and analysis
   - CSV export functionality with progress tracking
@@ -38,16 +38,18 @@ The application consists of three main services orchestrated by Docker Compose:
 
 ## Features
 
-<img src="assets/playlist-analysis-features.png" alt="Playlist Analysis Features" width="600">
-
 ### Playlist Analysis
+
 - View all Spotify playlists (owned and followed)
 - Detailed track statistics including artists, albums, popularity scores
 - Release date analysis and track duration statistics
 - Duplicate track detection with position information
 - Playlist merging simulation showing overlap and union statistics
 
+<img src="assets/playlist-analysis-features.png" alt="Playlist Analysis Features" width="600">
+
 ### Data Export
+
 - **Individual Playlist Export**: Complete CSV with track metadata, audio features, and playlist information
 - **Bulk Export**: All playlists exported to a single comprehensive CSV file
 - **Progress Tracking**: Real-time progress updates during export process
@@ -56,6 +58,7 @@ The application consists of three main services orchestrated by Docker Compose:
 <img src="assets/export-progress-tracking.png" alt="Export Progress Tracking" width="300">
 
 ### Security and Privacy
+
 - Secure Spotify OAuth 2.0 implementation using Authorization Code flow
 - Encrypted refresh token storage in PostgreSQL database
 - Session-based authentication with signed cookies
@@ -65,7 +68,9 @@ The application consists of three main services orchestrated by Docker Compose:
 ## Spotify Integration
 
 ### OAuth Scopes
+
 The application requests minimal necessary permissions:
+
 - `playlist-read-private`: Access to private playlists
 - `playlist-read-collaborative`: Access to collaborative playlists
 - `user-read-email`: User profile information
@@ -73,12 +78,14 @@ The application requests minimal necessary permissions:
 <img src="assets/oauth-flow-diagram.png" alt="OAuth Flow Diagram" width="600">
 
 ### API Rate Limiting
+
 - Handles Spotify's rate limiting (HTTP 429 responses)
 - Implements retry logic with exponential backoff
 - Batch processing for efficient API usage
 - Automatic token refresh when access tokens expire
 
 ### Data Model
+
 ```prisma
 model User {
   id           String   @id @default(cuid())
@@ -102,21 +109,24 @@ model Token {
 ## API Endpoints
 
 ### Authentication
-```
+
+```bash
 GET  /auth/login                     # Initiate Spotify OAuth flow
 GET  /auth/callback                  # Handle OAuth callback
 POST /auth/logout                    # Clear user session
 ```
 
 ### User Data
-```
+
+```bash
 GET  /me                             # Current user profile
 GET  /me/playlists                   # List user playlists
 GET  /me/audio-features              # Audio features analysis
 ```
 
 ### Playlist Operations
-```
+
+```bash
 GET  /playlists/:id/contents         # Playlist tracks (paginated)
 GET  /playlists/:id/stats            # Playlist statistics
 GET  /playlists/:id/simulate-dedupe  # Duplicate detection (read-only)
@@ -124,14 +134,16 @@ GET  /playlists/:id/export           # Download playlist as CSV
 ```
 
 ### Bulk Operations
-```
+
+```bash
 POST /playlists/export-all           # Start bulk export job
 GET  /playlists/export-progress/:jobId  # Check export progress
 GET  /playlists/download/:jobId      # Download completed export
 ```
 
 ### Utility
-```
+
+```bash
 GET  /simulate-merge?a=PL1&b=PL2     # Compare two playlists
 GET  /healthz                        # Health check endpoint
 GET  /readyz                         # Readiness check endpoint
@@ -143,6 +155,7 @@ GET  /metrics                        # Prometheus metrics
 ### Local Development Setup
 
 1. **API Development**
+
    ```bash
    cd api
    cp .env.example .env
@@ -151,6 +164,7 @@ GET  /metrics                        # Prometheus metrics
    ```
 
 2. **Frontend Development**
+
    ```bash
    cd frontend
    cp .......
