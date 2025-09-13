@@ -148,7 +148,7 @@ async function exportAllPlaylists() {
 <template>
   <section v-if="!me" class="auth-section">
     <div class="auth-card">
-      <h2>Welcome to the PXL Playlist Parser</h2>
+      <h2>Welcome to the<br>PXL Playlist Parser</h2>
       <p>Authenticate with Spotify to analyze and manage your playlists.</p>
     </div>
   </section>
