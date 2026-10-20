@@ -77,7 +77,9 @@ The app requests these read-only scopes: `playlist-read-private`, `playlist-read
 
 ## Last.fm setup (optional)
 
-Create an API account at <https://www.last.fm/api/account/create> (the callback URL can stay empty) and set `LASTFM_API_KEY`. Without it the app works, but the playlist page shows that listener stats are unavailable. The key is a server-side secret: it belongs in the API's environment, never in the frontend build.
+Create an API account at <https://www.last.fm/api/account/create> (the callback URL can stay empty) and set `LASTFM_API_KEY`. Without it the app still works, but listener counts, genre tags and similar artists are missing: the playlist page and the Insights page say so, and the taste eras, genres and artist constellation stay empty. The key is a server-side secret: it belongs in the API's environment, never in the frontend build.
+
+Deezer and MusicBrainz need no account or configuration; the API only needs outbound internet access to them.
 
 ## Configuration
 
@@ -105,8 +107,8 @@ Everything that differs between environments is configured with environment vari
 | `PORT` / `HOST` | no | `3000` / `0.0.0.0` | Listen address. |
 | `LOG_LEVEL` | no | `info` | Fastify/pino log level. |
 | `NODE_ENV` | no | | `production` or `development`. |
-| `LASTFM_API_KEY` | no | | Enables Last.fm listener stats. |
-| `LASTFM_CACHE_DAYS` | no | `30` | How long Last.fm results are cached. |
+| `LASTFM_API_KEY` | no | | Enables Last.fm listener counts, tags and similar artists. |
+| `LASTFM_CACHE_DAYS` | no | `30` | How long Last.fm listener counts are cached. |
 
 Generate secrets with:
 
@@ -190,7 +192,7 @@ npm install
 npm run dev
 ```
 
-Open <http://127.0.0.1:5173> (not `localhost`; the Spotify redirect and the cookies are tied to `127.0.0.1`) and click **Login with Spotify**.
+Open <http://127.0.0.1:5173> (not `localhost`; the Spotify redirect and the cookies are tied to `127.0.0.1`) and click **Log in with Spotify**.
 
 Run the API unit tests with `npm test` in `api/`.
 
