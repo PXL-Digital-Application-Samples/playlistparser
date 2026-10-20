@@ -36,7 +36,7 @@ const unitFor = (v) => (v === 1 && /[a-z]s$/.test(props.unit) ? props.unit.slice
 }
 .bar-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .bar-sub { color: var(--muted); }
-.bar-track { height: 10px; background: var(--surface-muted); border-radius: 5px; overflow: hidden; }
+.bar-track { height: 10px; background: var(--track); border-radius: 5px; overflow: hidden; }
 .bar { display: block; height: 100%; border-radius: 5px; min-width: 3px; }
 .bar-value { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .bar-unit { color: var(--muted); font-size: 12px; }

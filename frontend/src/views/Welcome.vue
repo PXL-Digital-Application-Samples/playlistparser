@@ -4,6 +4,8 @@ import ThemeSwitch from '../components/ThemeSwitch.vue';
 
 const loginUrl = inject('loginUrl');
 const DECADES = [['60s', 26], ['70s', 46], ['80s', 74], ['90s', 65], ['00s', 100], ['10s', 89], ['20s', 36]];
+// Made-up sample rows for the illustration (labelled "example" on the page).
+const SAMPLE_DUPES = [{ song: 'Harbor Lights', n: 4 }, { song: 'Paper Satellites', n: 3 }, { song: 'Slow Weather', n: 3 }];
 </script>
 
 <template>
@@ -46,6 +48,9 @@ const DECADES = [['60s', 26], ['70s', 46], ['80s', 74], ['90s', 65], ['00s', 100
           <p class="ex-k">Health · example</p>
           <p class="ex-big"><b>12</b> songs in two or more playlists</p>
           <p class="ex-small"><b>5</b> greyed out by Spotify · <b>40</b> liked but in no playlist</p>
+          <ul class="ex-rows">
+            <li v-for="r in SAMPLE_DUPES" :key="r.song"><span class="ex-song">{{ r.song }}</span><span class="ex-in">in {{ r.n }} playlists</span></li>
+          </ul>
         </div>
         <div class="ex ex-covers" aria-hidden="true">
           <i v-for="n in 9" :key="n" :class="`c${n}`"></i>
@@ -79,6 +84,11 @@ const DECADES = [['60s', 26], ['70s', 46], ['80s', 74], ['90s', 65], ['00s', 100
 .ex-small { margin: 10px 0 0; font-size: 13px; color: var(--muted); }
 .ex-small b { color: var(--text); }
 .ex-taste { grid-column: span 2; }
+.ex-health { display: flex; flex-direction: column; }
+.ex-rows { list-style: none; margin: auto 0 0; padding: 14px 0 0; display: flex; flex-direction: column; gap: 6px; }
+.ex-rows li { display: flex; justify-content: space-between; gap: 8px; padding: 6px 10px; border-radius: 8px; background: var(--surface-muted); font-size: 13px; }
+.ex-song { font-weight: 650; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ex-in { color: var(--muted); white-space: nowrap; }
 .ex-bars { display: flex; align-items: flex-end; gap: 8px; height: 110px; margin-top: 16px; }
 .ex-bars div { flex: 1; height: 100%; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; gap: 4px; }
 .ex-bars i { width: 100%; border-radius: 5px 5px 2px 2px; background: var(--mark); }

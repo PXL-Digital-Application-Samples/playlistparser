@@ -232,6 +232,8 @@ watch(() => props.id, () => (songsShown.value = SONGS_STEP));
   .hero-row { flex-direction: column; align-items: flex-start; gap: 16px; }
   .portrait { width: 132px; height: 132px; }
   .song { grid-template-columns: 40px minmax(0, 1fr) 40px; }
-  .song-places { grid-column: 2 / 4; justify-content: flex-start; max-width: none; }
+  .song img, .song .noimg { grid-row: 1; }
+  .len { grid-row: 1; grid-column: 3; }
+  .song-places { grid-row: 2; grid-column: 2 / 4; justify-content: flex-start; max-width: none; }
 }
 </style>

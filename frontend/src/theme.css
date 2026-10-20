@@ -25,6 +25,7 @@
   /* Data marks and indicators (bars, progress, chart fills): >= 3:1 on --surface. */
   --mark: #f0a95b;
   --mark-muted: #4b5751;
+  --track: #262e2a;           /* empty part of a bar or progress track */
   --spotify: #1ed760;
   --spotify-hover: #3be477;
   --spotify-ink: #03210e;
@@ -92,6 +93,7 @@
     --accent-strong: #6b3404;
     --mark: #b85f0b;
     --mark-muted: #8f9a94;
+    --track: #c9d1cc;
     --spotify: #1db954;
     --spotify-hover: #1ed760;
     --spotify-ink: #03210e;
@@ -144,6 +146,7 @@
   --accent-strong: #6b3404;
   --mark: #b85f0b;
   --mark-muted: #8f9a94;
+  --track: #c9d1cc;
   --spotify: #1db954;
   --spotify-hover: #1ed760;
   --spotify-ink: #03210e;
@@ -351,7 +354,7 @@ a.sp-cover:hover img { filter: brightness(1.12) saturate(1.1); }
 }
 @keyframes shimmer { to { background-position: -200% 0; } }
 
-.progress-track { display: inline-block; height: 6px; background: var(--surface-muted); border-radius: 3px; overflow: hidden; }
+.progress-track { display: inline-block; height: 6px; background: var(--track); border-radius: 3px; overflow: hidden; }
 .progress-fill { display: block; height: 100%; background: var(--mark); border-radius: 3px; transition: width 0.3s ease; }
 
 .empty { text-align: center; padding: 40px 16px; color: var(--muted); }

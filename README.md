@@ -46,6 +46,12 @@ The app has four sections, in a side rail on desktop and a tab bar on phones: **
 | <img src="assets/compare.png" alt="Compare two playlists"> | <img src="assets/light-theme.png" alt="Album page in the light theme"> |
 | **Compare**: only in A, in both, only in B. | **Light theme**, here on an album page with its full track list. |
 
+On phones the side rail becomes a tab bar at the bottom:
+
+| | | |
+|---|---|---|
+| <img src="assets/phone-home.jpg" alt="Home on a phone" width="250"> | <img src="assets/phone-taste.jpg" alt="Taste on a phone" width="250"> | <img src="assets/phone-artist.jpg" alt="Artist page on a phone" width="250"> |
+
 ### Insights
 
 Four pages about your taste rather than one playlist, built from your Liked Songs, your Spotify top artists and tracks, your recent plays and public music data.

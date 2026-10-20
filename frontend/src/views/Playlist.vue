@@ -694,7 +694,7 @@ a.card-sub { color: var(--link); }
 /* Popularity */
 .explain { margin: 0 0 12px; color: var(--muted); font-size: 14px; max-width: 70ch; }
 .progress { display: flex; align-items: center; gap: 12px; font-size: 13px; color: var(--muted); margin-bottom: 12px; }
-.progress-track { flex: 0 0 160px; height: 6px; background: var(--surface-muted); border-radius: 3px; overflow: hidden; }
+.progress-track { flex: 0 0 160px; height: 6px; background: var(--track); border-radius: 3px; overflow: hidden; }
 .progress-fill { display: block; height: 100%; background: var(--mark); transition: width 0.3s ease; }
 .source { margin: 10px 0 0; font-size: 12px; color: var(--muted); }
 
