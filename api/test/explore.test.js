@@ -24,7 +24,8 @@ const liked = source('liked', 'Liked Songs', [
   item('t2', { added: '2021-03-01T00:00:00Z' }),
   item('t5', { artist: 'B', artistId: 'b', album: 'al2' }),
 ]);
-const p1 = source('p1', 'Road trip', [item('t1'), item('t3', { playable: false }), item('t4', { artist: 'B', artistId: 'b', album: 'al2' })], '2026-02-01T00:00:00Z');
+// p1 was synced earlier but had a song added more recently than p2.
+const p1 = source('p1', 'Road trip', [item('t1'), item('t3', { playable: false, added: '2024-06-01T00:00:00Z' }), item('t4', { artist: 'B', artistId: 'b', album: 'al2' })], '2025-01-01T00:00:00Z');
 // t1b: a different release of t1 (same ISRC) - the same song for duplicates.
 const p2 = source('p2', 'Focus', [item('t1b', { isrc: 'isrc-t1' }), item('t4', { artist: 'B', artistId: 'b', album: 'al2' })]);
 const library = [liked, p1, p2];
@@ -38,7 +39,8 @@ test('libraryOverview totals and health counts', () => {
   assert.equal(o.health.duplicates, 2); // t1 (two versions) and t4
   assert.equal(o.health.unplayable, 1);
   assert.equal(o.health.liked_in_no_playlist, 2); // t2 and t5
-  assert.equal(o.recent_playlists[0].id, 'p1');
+  assert.equal(o.recent_playlists[0].id, 'p1'); // newest addition wins, not the latest sync
+  assert.equal(o.recent_playlists[0].last_added, '2024-06-01T00:00:00Z');
 });
 
 test('crossPlaylistDuplicates groups versions by ISRC and flags liked songs', () => {

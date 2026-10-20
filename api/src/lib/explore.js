@@ -73,13 +73,21 @@ export function libraryOverview(sources) {
       unplayable: unplayable.size,
       liked_in_no_playlist: liked ? likedNowhere : null,
     },
-    // Re-synced most recently = changed most recently on Spotify (a playlist
-    // is only re-read when its snapshot changed).
-    recent_playlists: [...playlists]
-      .sort((a, b) => new Date(b.synced_at) - new Date(a.synced_at))
-      .slice(0, 6)
-      .map((s) => ({ ...playlistRef(s.info), tracks: s.tracks.length, synced_at: s.synced_at })),
+    // Spotify doesn't say when a playlist was last edited, so this uses the
+    // date the newest song was added. (Not the sync time: a first sync reads
+    // every playlist at once, in no meaningful order.)
+    recent_playlists: playlists
+      .map((s) => ({ ...playlistRef(s.info), tracks: s.tracks.length, last_added: lastAdded(s.tracks) }))
+      .filter((p) => p.last_added)
+      .sort((a, b) => b.last_added.localeCompare(a.last_added))
+      .slice(0, 6),
   };
+}
+
+function lastAdded(tracks) {
+  let max = null;
+  for (const t of tracks) if (t.added_at && t.added_at > '1971' && (!max || t.added_at > max)) max = t.added_at;
+  return max;
 }
 
 // ---- Health: the same song in several playlists -------------------------------

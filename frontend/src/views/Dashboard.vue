@@ -114,7 +114,7 @@ const EXPLORE = {
 
     <section v-if="overview?.recent_playlists?.length" aria-labelledby="h-recent">
       <div class="section-head">
-        <h2 id="h-recent">Recently changed playlists</h2>
+        <h2 id="h-recent">Recently added to</h2>
         <router-link to="/playlists" class="more">All playlists <Icon name="chevron-right" :size="14" /></router-link>
       </div>
       <ul class="cover-row" role="list">
@@ -123,7 +123,7 @@ const EXPLORE = {
             <img v-if="p.image" :src="p.image" alt="" loading="lazy" />
             <span v-else class="noimg"><Icon name="music" :size="24" /></span>
             <strong>{{ p.name }}</strong>
-            <span>{{ plural(p.tracks, 'track') }} · {{ ago(p.synced_at) }}</span>
+            <span :title="`Newest song added ${p.last_added.slice(0, 10)}`">{{ plural(p.tracks, 'track') }} · song added {{ ago(p.last_added) }}</span>
           </router-link>
         </li>
       </ul>
