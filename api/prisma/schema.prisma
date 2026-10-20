@@ -1,11 +1,16 @@
 // prisma/schema.prisma
+// The connection URL lives in prisma.config.js (CLI) and in the driver
+// adapter in src/server.js (runtime), as required by Prisma 7.
+//
+// prisma-client-js (deprecated in Prisma 7, still supported) is used on
+// purpose: the newer "prisma-client" generator emits TypeScript, and this API
+// is plain JavaScript without a build step.
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
 }
 
 model User {

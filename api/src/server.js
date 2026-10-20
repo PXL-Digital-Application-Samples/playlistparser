@@ -6,6 +6,7 @@ import underPressure from '@fastify/under-pressure';
 import rateLimit from '@fastify/rate-limit';
 import client from 'prom-client';
 import { PrismaClient } from '@prisma/client';
+import { PrismaPg } from '@prisma/adapter-pg';
 
 import { loadConfig } from './lib/config.js';
 import { createTokenCipher } from './lib/crypto.js';
@@ -33,7 +34,8 @@ const app = Fastify({
   trustProxy: config.trustProxy,
 });
 
-const prisma = new PrismaClient();
+// Prisma 7 talks to Postgres through the node-postgres driver adapter.
+const prisma = new PrismaClient({ adapter: new PrismaPg({ connectionString: process.env.DATABASE_URL }) });
 app.decorate('config', config);
 app.decorate('prisma', prisma);
 app.decorate('cipher', createTokenCipher(config.tokenEncKey));

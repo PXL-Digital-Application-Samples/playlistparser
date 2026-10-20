@@ -9,7 +9,7 @@ A Spotify playlist analyzer: a Vue 3 frontend and a Fastify + Prisma API backed 
 | Component | Technology | Notes |
 |-----------|------------|-------|
 | `frontend/` | Vue 3, Vue Router, Vite | Static single-page app. Calls the API with cookies (`credentials: 'include'`). |
-| `api/` | Node.js 22+, Fastify 5, Prisma 6 | Spotify OAuth, statistics, CSV export, Last.fm lookups. Stateless: all state lives in PostgreSQL. |
+| `api/` | Node.js 22+, Fastify 5, Prisma 7 (node-postgres driver adapter) | Spotify OAuth, statistics, CSV export, Last.fm lookups. Stateless: all state lives in PostgreSQL. |
 | Database | PostgreSQL | Users, sessions, encrypted Spotify tokens, export jobs, Last.fm cache. |
 
 External services the API talks to:
@@ -99,7 +99,7 @@ Some things to know about cookies: the session cookie is set by the **API's** ho
 
 ### Database
 
-Apply migrations with `npm run db:migrate` (runs `prisma migrate deploy`) in `api/` before starting the API, and again after every update. The Prisma client must be generated (`npm run db:generate`) after installing dependencies. Both need the `prisma` CLI, which is a dev dependency.
+Apply migrations with `npm run db:migrate` (runs `prisma migrate deploy`) in `api/` before starting the API, and again after every update. The Prisma client must be generated (`npm run db:generate`) after installing dependencies. Both need the `prisma` CLI (a dev dependency) and read `api/prisma.config.js`; `db:migrate` also needs `DATABASE_URL`. Prisma 7 has no native query engine, so no OpenSSL or other system libraries are required.
 
 ## API endpoints
 
