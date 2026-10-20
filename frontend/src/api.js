@@ -1,52 +1,69 @@
-const BASE = import.meta.env.VITE_API_BASE_URL;
+// Base URL of the API, fixed at build time (`VITE_API_BASE_URL`).
+// Empty means "same origin as the frontend".
+const BASE = (import.meta.env.VITE_API_BASE_URL || '').replace(/\/+$/, '');
 
-export async function apiGet(path) {
-  const res = await fetch(`${BASE}${path}`, { credentials: 'include' });
-  console.log(`API call to ${path}:`, {
-    url: `${BASE}${path}`,
-    status: res.status,
-    ok: res.ok,
-    headers: Object.fromEntries(res.headers.entries())
-  });
-  if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
-  const data = await res.json();
-  console.log(`API response for ${path}:`, data);
-  return data;
+// Link to a song/album/artist/show on Spotify (opens the app when installed).
+export function spotifyUrl(type, id) {
+  return id ? `https://open.spotify.com/${type}/${encodeURIComponent(id)}` : undefined;
 }
 
-export async function apiPost(path, data = {}) {
-  const res = await fetch(`${BASE}${path}`, { 
-    method: 'POST',
+export class ApiError extends Error {
+  constructor(status, code) {
+    super(code || `HTTP ${status}`);
+    this.status = status;
+    this.code = code;
+  }
+}
+
+async function request(method, path) {
+  const res = await fetch(`${BASE}${path}`, {
+    method,
     credentials: 'include',
-    headers: {
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify(data)
+    headers: method === 'POST' ? { 'Content-Type': 'application/json' } : undefined,
+    body: method === 'POST' ? '{}' : undefined,
   });
-  console.log(`API POST to ${path}:`, {
-    url: `${BASE}${path}`,
-    status: res.status,
-    ok: res.ok,
-    headers: Object.fromEntries(res.headers.entries())
-  });
-  if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
-  const responseData = await res.json();
-  console.log(`API response for POST ${path}:`, responseData);
-  return responseData;
+  const body = await res.json().catch(() => null);
+  if (!res.ok) throw new ApiError(res.status, body?.error);
+  return body;
 }
+
+const get = (path) => request('GET', path);
+const post = (path) => request('POST', path);
+const enc = encodeURIComponent;
 
 export const endpoints = {
-  login: () => `${BASE}/auth/login`,
-  logout: () => apiPost('/auth/logout'),
-  me: () => apiGet('/me'),
-  playlists: () => apiGet('/me/playlists'),
-  playlistContents: (id) => apiGet(`/playlists/${id}/contents`),
-  playlistStats: (id) => apiGet(`/playlists/${id}/stats`),
-  simulateDedupe: (id) => apiGet(`/playlists/${id}/simulate-dedupe`),
-  simulateMerge: (a, b) => apiGet(`/simulate-merge?a=${encodeURIComponent(a)}&b=${encodeURIComponent(b)}`),
-  exportPlaylist: (id) => `${BASE}/playlists/${id}/export`,
-  exportAllPlaylists: () => `${BASE}/playlists/export-all`,
-  startExportAll: () => apiPost('/playlists/export-all'),
-  getExportProgress: (jobId) => apiGet(`/playlists/export-progress/${jobId}`),
-  downloadExport: (jobId) => `${BASE}/playlists/download/${jobId}`
+  loginUrl: () => `${BASE}/auth/login`,
+  logout: () => post('/auth/logout'),
+  me: () => get('/me'),
+  playlists: () => get('/me/playlists'),
+  playlistContents: (id) => get(`/playlists/${enc(id)}/contents`),
+  playlistStats: (id) => get(`/playlists/${enc(id)}/stats`),
+  playlistListeners: (id) => get(`/playlists/${enc(id)}/listeners`),
+  simulateDedupe: (id) => get(`/playlists/${enc(id)}/simulate-dedupe`),
+  simulateMerge: (a, b) => get(`/simulate-merge?a=${enc(a)}&b=${enc(b)}`),
+  exportPlaylistUrl: (id) => `${BASE}/playlists/${enc(id)}/export`,
+  startExportAll: () => post('/playlists/export-all'),
+  getExportProgress: (jobId) => get(`/playlists/export-progress/${enc(jobId)}`),
+  downloadExportUrl: (jobId) => `${BASE}/playlists/download/${enc(jobId)}`,
+  insightsSummary: () => get('/insights/summary'),
+  insightsCollection: () => get('/insights/collection'),
+  insightsOverlap: () => get('/insights/overlap'),
+  insightsUnplayable: () => get('/insights/unplayable'),
+  librarySyncState: () => get('/library/sync'),
+  startLibrarySync: () => post('/library/sync'),
 };
+
+// Human-readable messages for API error codes.
+export function describeError(err) {
+  const messages = {
+    reauth_required: 'Your Spotify session expired. Please log in again.',
+    unauthorized: 'Please log in with Spotify.',
+    playlist_not_accessible:
+      'Spotify only allows reading playlists you own or collaborate on.',
+    rate_limited: 'Spotify is rate limiting requests. Try again in a moment.',
+    spotify_failed: 'Spotify returned an error. Try again later.',
+    not_found: 'Playlist not found.',
+  };
+  if (err instanceof TypeError) return 'Cannot reach the API. Is it running, and is VITE_API_BASE_URL correct?';
+  return messages[err?.code] || err?.message || 'Something went wrong.';
+}

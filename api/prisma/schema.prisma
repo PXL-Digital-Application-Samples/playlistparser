@@ -9,12 +9,15 @@ datasource db {
 }
 
 model User {
-  id          String   @id @default(cuid())
-  spotifyId   String   @unique
-  email       String?
+  id          String      @id @default(cuid())
+  spotifyId   String      @unique
   displayName String?
-  createdAt   DateTime @default(now())
+  createdAt   DateTime    @default(now())
   tokens      Token?
+  sessions    Session[]
+  exportJobs  ExportJob[]
+  playlists   LibraryPlaylist[]
+  librarySync LibrarySync?
 }
 
 model Token {
@@ -24,4 +27,84 @@ model Token {
   scope       String
   expiresAt   DateTime
   user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+// Server-side session; the browser only holds a signed random id.
+model Session {
+  id        String   @id
+  userId    String
+  createdAt DateTime @default(now())
+  expiresAt DateTime
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+// Bulk "export all playlists" job. Stored in the database so any API
+// instance can report progress and serve the result.
+model ExportJob {
+  id              String   @id @default(cuid())
+  userId          String
+  status          String   // starting | fetching_playlists | processing | completed | error
+  current         Int      @default(0)
+  total           Int      @default(0)
+  skipped         Int      @default(0)
+  currentPlaylist String?
+  error           String?
+  filename        String?
+  csv             String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([createdAt])
+}
+
+// Synced copy of a user's library: one row per analyzable playlist, plus
+// "liked" for Liked Songs. `version` is Spotify's snapshot_id (or, for Liked
+// Songs, total + newest added_at), so unchanged playlists aren't re-read.
+model LibraryPlaylist {
+  userId        String
+  playlistId    String
+  version       String
+  name          String
+  image         String?
+  url           String?
+  ownerId       String?
+  ownerName     String?
+  collaborative Boolean  @default(false)
+  trackCount    Int      @default(0)
+  tracks        Json     // normalized tracks (see src/lib/tracks.js), with is_playable
+  status        String   // ok | error
+  error         String?
+  syncedAt      DateTime @default(now())
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([userId, playlistId])
+}
+
+// Progress of the user's (single) library sync, readable by any API instance.
+model LibrarySync {
+  userId     String    @id
+  status     String    // running | completed | error
+  total      Int       @default(0)
+  done       Int       @default(0)
+  failed     Int       @default(0)
+  current    String?
+  error      String?
+  startedAt  DateTime  @default(now())
+  finishedAt DateTime?
+  updatedAt  DateTime  @updatedAt
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+// Cache of Last.fm track statistics, keyed by Spotify track id.
+// listeners/playcount are null when Last.fm doesn't know the track.
+model LastfmTrack {
+  spotifyTrackId String   @id
+  listeners      Int?
+  playcount      Int?
+  fetchedAt      DateTime @default(now())
 }

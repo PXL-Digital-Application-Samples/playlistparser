@@ -1,180 +1,310 @@
 <script setup>
-import { ref, onMounted } from 'vue';
-import { endpoints } from './api.js';
+import { ref, onMounted, provide } from 'vue';
+import { useRouter } from 'vue-router';
+import { endpoints, describeError } from './api.js';
+import Icon from './components/Icon.vue';
 
+const router = useRouter();
 const me = ref(null);
 const loading = ref(true);
-const LOGIN_URL = `${import.meta.env.VITE_API_BASE_URL}/auth/login`;
+const notice = ref(null);
+const LOGIN_URL = endpoints.loginUrl();
+provide('loginUrl', LOGIN_URL);
+
+const LOGIN_ERRORS = {
+  access_denied: 'Spotify login was cancelled.',
+  bad_state: 'Login expired or was started in another tab. Please try again.',
+  user_not_allowed:
+    'This Spotify account is not allowed to use this app. In development mode the app owner must add it under "User Management" in the Spotify dashboard.',
+  spotify_login_failed: 'Spotify login failed. Check the API logs and Spotify app settings.',
+};
 
 async function loadMe() {
   loading.value = true;
-  try { me.value = await endpoints.me(); } catch { me.value = null; }
+  try {
+    me.value = await endpoints.me();
+  } catch (err) {
+    me.value = null;
+    if (err.status !== 401) notice.value = describeError(err);
+  }
   loading.value = false;
 }
 
 async function logout() {
   try {
     await endpoints.logout();
-    me.value = null;
-    // Optionally redirect to home or show a message
-  } catch (error) {
-    console.error('Logout failed:', error);
-    // Even if logout fails on server, clear local state
-    me.value = null;
+  } catch {
+    // Clear local state even if the server call fails.
   }
+  me.value = null;
+  router.push('/');
 }
-onMounted(loadMe);
+
+onMounted(() => {
+  const params = new URLSearchParams(window.location.search);
+  const loginError = params.get('login_error');
+  if (loginError) {
+    notice.value = LOGIN_ERRORS[loginError] || `Login failed (${loginError}).`;
+    params.delete('login_error');
+    const qs = params.toString();
+    window.history.replaceState(null, '', window.location.pathname + (qs ? `?${qs}` : ''));
+  }
+  loadMe();
+});
 </script>
 
 <template>
   <header class="app-header">
-    <div class="logo">
-      <strong>PXL Playlist Parser</strong>
+    <div class="brand">
+      <router-link to="/" class="logo">PXL Playlist Parser</router-link>
+      <nav v-if="me" class="main-nav" aria-label="Main">
+        <router-link to="/" class="nav-link" exact-active-class="active">Playlists</router-link>
+        <router-link to="/insights" class="nav-link" active-class="active">Insights</router-link>
+      </nav>
     </div>
     <div class="user-section">
-      <div v-if="loading" class="loading-indicator">…</div>
-      <div v-else-if="me" class="user-info">
-        <span>Hello, <strong>{{ me.displayName || me.email || me.spotifyId }}</strong></span>
-        <button @click="logout" class="logout-btn" title="Logout">
-          ×
+      <span v-if="loading" class="muted" aria-live="polite">…</span>
+      <template v-else-if="me">
+        <span class="user-name">{{ me.displayName || me.spotifyId }}</span>
+        <button @click="logout" class="btn btn-secondary btn-sm">
+          <Icon name="logout" :size="16" /> Log out
         </button>
-      </div>
-      <div v-else>
-        <a :href="LOGIN_URL" class="login-btn">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-            <path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.84-.179-.959-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.361 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.42 1.56-.299.421-1.02.599-1.559.3z"/>
-          </svg>
-          Login with Spotify
-        </a>
-      </div>
+      </template>
+      <a v-else :href="LOGIN_URL" class="btn btn-primary btn-sm">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+          <path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.84-.179-.959-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.361 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.42 1.56-.299.421-1.02.599-1.559.3z"/>
+        </svg>
+        Log in with Spotify
+      </a>
     </div>
   </header>
+  <div v-if="notice" class="notice" role="alert">
+    <span>{{ notice }}</span>
+    <button @click="notice = null" class="icon-btn" aria-label="Dismiss message">
+      <Icon name="close" :size="16" />
+    </button>
+  </div>
   <main class="main-content">
-    <router-view :me="me" />
+    <router-view :me="me" :me-loading="loading" />
   </main>
 </template>
 
 <style>
+/* ---- Design tokens ------------------------------------------------------ */
+:root {
+  --bg: #f6f7f9;
+  --surface: #ffffff;
+  --surface-muted: #f1f3f5;
+  --border: #dde1e6;
+  --text: #1c1f23;
+  --muted: #555e68;          /* >= 4.5:1 on --bg and --surface */
+  --accent: #1db954;         /* Spotify green, used with dark text */
+  --accent-hover: #1ed760;
+  --accent-ink: #0b2a17;
+  --link: #0b5cad;
+  --focus: #1a73e8;
+  --danger-bg: #fdecec;
+  --danger-text: #8a1c1c;
+  --warn-bg: #fff4d6;
+  --warn-text: #5c4400;
+  --lastfm: #d51007;
+  --radius: 10px;
+  --shadow: 0 1px 2px rgba(16, 24, 40, 0.06), 0 1px 3px rgba(16, 24, 40, 0.08);
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+
 body {
   font-family: ui-sans-serif, system-ui, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
   margin: 0;
-  padding: 0;
-  background-color: #f8f9fa;
-  color: #212529;
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.45;
 }
 
-a {
-  color: #2563eb;
-  text-decoration: none;
-}
+a { color: var(--link); }
 
-a:hover {
-  text-decoration: underline;
-}
-
-code {
-  background: #f6f8fa;
-  padding: 2px 4px;
+:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: 2px;
   border-radius: 4px;
 }
 
+.muted { color: var(--muted); }
+
+.visually-hidden {
+  position: absolute !important;
+  width: 1px; height: 1px;
+  padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0, 0, 0, 0);
+  white-space: nowrap; border: 0;
+}
+
+/* ---- Buttons ------------------------------------------------------------ */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 16px;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s, border-color 0.15s;
+}
+.btn-sm { padding: 6px 12px; font-size: 13px; }
+.btn-primary { background: var(--accent); color: var(--accent-ink); }
+.btn-primary:hover:not(:disabled) { background: var(--accent-hover); }
+.btn-secondary { background: var(--surface); color: var(--text); border-color: var(--border); }
+.btn-secondary:hover:not(:disabled) { background: var(--surface-muted); }
+.btn-link { background: none; border: none; padding: 6px 0; color: var(--link); font-weight: 500; }
+.btn-link:hover { text-decoration: underline; }
+.btn:disabled { opacity: 0.55; cursor: not-allowed; }
+
+.icon-btn {
+  display: inline-flex;
+  background: none;
+  border: none;
+  padding: 4px;
+  color: inherit;
+  cursor: pointer;
+  border-radius: 6px;
+}
+.icon { flex: none; }
+
+/* Links to Spotify: covers and names look the same, with a hover hint. */
+.sp-link { color: inherit; text-decoration: none; }
+.sp-link:hover { text-decoration: underline; }
+a.sp-cover { display: block; color: inherit; text-decoration: none; }
+a.sp-cover img { transition: filter 0.15s; }
+a.sp-cover:hover img { filter: brightness(1.12) saturate(1.1); }
+
+/* ---- Shared blocks ------------------------------------------------------ */
+.alert {
+  padding: 12px 16px;
+  border-radius: var(--radius);
+  font-size: 14px;
+  margin: 12px 0;
+}
+.alert-error { background: var(--danger-bg); color: var(--danger-text); }
+.alert-warn { background: var(--warn-bg); color: var(--warn-text); }
+
+.badge {
+  display: inline-block;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: #e6f0fb;
+  color: #0b4f96;
+}
+
+.src-lastfm {
+  display: inline-block;
+  vertical-align: middle;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: #fff;
+  background: var(--lastfm);
+  border-radius: 4px;
+  padding: 1px 6px;
+}
+
+.skeleton {
+  background: linear-gradient(90deg, #e9ecef 25%, #f4f5f7 50%, #e9ecef 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.2s infinite;
+  border-radius: 6px;
+}
+@keyframes shimmer { to { background-position: -200% 0; } }
+@media (prefers-reduced-motion: reduce) {
+  .skeleton { animation: none; }
+  * { transition: none !important; scroll-behavior: auto !important; }
+}
+
+/* ---- App shell ---------------------------------------------------------- */
 .app-header {
+  position: sticky;
+  top: 0;
+  z-index: 20;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 16px 24px;
-  background: white;
-  border-bottom: 1px solid #dee2e6;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  gap: 12px;
+  padding: 10px 24px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
 }
 
 .logo {
-  font-size: 1.5rem;
-  font-weight: 700;
-  color: #212529;
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: var(--text);
+  text-decoration: none;
 }
+
+.brand { display: flex; align-items: center; gap: 20px; min-width: 0; }
+.main-nav { display: flex; gap: 4px; }
+.nav-link {
+  padding: 6px 12px;
+  border-radius: 999px;
+  color: var(--text);
+  text-decoration: none;
+  font-size: 14px;
+  font-weight: 500;
+}
+.nav-link:hover { background: var(--surface-muted); }
+.nav-link.active { background: var(--text); color: #fff; }
 
 .user-section {
   display: flex;
   align-items: center;
-}
-
-.loading-indicator {
-  color: #6c757d;
+  gap: 12px;
   font-size: 14px;
 }
 
-.user-info {
-  color: #495057;
-  font-size: 14px;
+.user-name {
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 30vw;
+}
+
+.notice {
   display: flex;
+  justify-content: space-between;
   align-items: center;
   gap: 12px;
-}
-
-.logout-btn {
-  background: none;
-  border: none;
-  color: #6c757d;
-  font-size: 20px;
-  line-height: 1;
-  cursor: pointer;
-  padding: 4px 8px;
-  border-radius: 4px;
-  transition: all 0.2s;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 24px;
-  height: 24px;
-}
-
-.logout-btn:hover {
-  background: #f8f9fa;
-  color: #dc3545;
-  transform: scale(1.1);
-}
-
-.login-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  background: #1db954;
-  color: white;
-  padding: 10px 20px;
-  border-radius: 50px;
-  text-decoration: none;
-  font-weight: 500;
-  transition: all 0.2s;
-  border: none;
-  cursor: pointer;
+  max-width: 1200px;
+  margin: 16px auto 0;
+  padding: 12px 16px;
+  background: var(--warn-bg);
+  border-radius: var(--radius);
+  color: var(--warn-text);
   font-size: 14px;
-}
-
-.login-btn:hover {
-  background: #1ed760;
-  text-decoration: none;
-  color: white;
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(29, 185, 84, 0.3);
 }
 
 .main-content {
-  min-height: calc(100vh - 70px);
+  min-height: calc(100vh - 60px);
 }
 
-@media (max-width: 768px) {
-  .app-header {
-    padding: 12px 16px;
-  }
-  
-  .logo {
-    font-size: 1.25rem;
-  }
-  
-  .login-btn {
-    padding: 8px 16px;
-    font-size: 13px;
-  }
+.page {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 24px;
+}
+
+@media (max-width: 640px) {
+  .app-header { padding: 10px 16px; }
+  .page { padding: 16px; }
+  .user-name { display: none; }
+  .logo { display: none; }
+  .brand { gap: 8px; }
 }
 </style>

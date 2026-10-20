@@ -1,110 +1,81 @@
-import fp from "fastify-plugin";
-import { prisma } from "../lib/db.js";
-import { tokenFromCode } from "../lib/spotify.js";
-import { encrypt, decrypt } from "../lib/crypto.js";
+import { randomToken } from '../lib/crypto.js';
+import {
+  SESSION_COOKIE, STATE_COOKIE, cookieOptions, createSession, deleteSession,
+} from '../lib/auth.js';
+import { SpotifyError } from '../lib/spotify.js';
 
-const SCOPES = [
-  "playlist-read-private",
-  "playlist-read-collaborative",
-  "user-read-email",
-].join(" ");
+export default async function authRoutes(fastify) {
+  const { config, prisma, spotify, cipher } = fastify;
 
-export default fp(async function authRoutes(fastify) {
-  fastify.get("/auth/login", async (req, reply) => {
-    const state = cryptoRandom();
-    reply.setCookie("oauth_state", state, {
-      path: "/",
-      httpOnly: true,
-      sameSite: "lax",
-      secure: fastify.config.isProd,
-    });
-    const p = new URLSearchParams({
-      client_id: process.env.SPOTIFY_CLIENT_ID,
-      response_type: "code",
-      redirect_uri: process.env.SPOTIFY_REDIRECT_URI,
-      scope: SCOPES,
-      state,
-    });
-    reply.redirect("https://accounts.spotify.com/authorize?" + p.toString());
+  // The state cookie must survive the top-level redirect back from Spotify,
+  // so it is always SameSite=Lax regardless of COOKIE_SAMESITE.
+  const stateCookie = {
+    ...cookieOptions(config, 600),
+    sameSite: 'lax',
+    path: `${config.basePath}/auth`,
+  };
+
+  const backToFrontend = (reply, error) => {
+    const url = new URL(config.frontendOrigin);
+    if (error) url.searchParams.set('login_error', error);
+    return reply.redirect(url.href);
+  };
+
+  fastify.get('/auth/login', async (req, reply) => {
+    const state = randomToken(16);
+    reply.setCookie(STATE_COOKIE, state, stateCookie);
+    return reply.redirect(spotify.authorizeUrl(state));
   });
 
-  fastify.get("/auth/callback", async (req, reply) => {
-    const { code, state } = req.query;
-    const cookieState = req.cookies.oauth_state;
-    if (!cookieState || state !== cookieState)
-      return reply.code(400).send({ error: "bad_state" });
+  fastify.get('/auth/callback', async (req, reply) => {
+    const { code, state, error } = req.query;
+    const expected = req.unsignCookie(req.cookies[STATE_COOKIE] || '');
+    reply.clearCookie(STATE_COOKIE, stateCookie);
 
-    const tok = await tokenFromCode(code);
-    const meRes = await fetch("https://api.spotify.com/v1/me", {
-      headers: { Authorization: `Bearer ${tok.access_token}` },
-    });
-    if (!meRes.ok) return reply.code(502).send({ error: "spotify_me_failed" });
-    const me = await meRes.json();
+    if (error) return backToFrontend(reply, error); // e.g. access_denied
+    if (!code || !state || !expected.valid || expected.value !== state) {
+      return backToFrontend(reply, 'bad_state');
+    }
+
+    let tok, me;
+    try {
+      tok = await spotify.exchangeCode(code);
+      me = await spotify.get('/me', tok.access_token);
+    } catch (err) {
+      req.log.warn({ err }, 'spotify login failed');
+      // In development mode Spotify answers 403 for accounts that aren't
+      // added under "User Management" in the developer dashboard.
+      const reason = err instanceof SpotifyError && err.status === 403 ? 'user_not_allowed' : 'spotify_login_failed';
+      return backToFrontend(reply, reason);
+    }
 
     const user = await prisma.user.upsert({
       where: { spotifyId: me.id },
-      create: {
-        spotifyId: me.id,
-        email: me.email ?? null,
-        displayName: me.display_name ?? null,
-      },
-      update: { email: me.email ?? null, displayName: me.display_name ?? null },
+      create: { spotifyId: me.id, displayName: me.display_name ?? null },
+      update: { displayName: me.display_name ?? null },
     });
 
+    const tokenData = {
+      accessToken: tok.access_token,
+      scope: tok.scope ?? '',
+      expiresAt: new Date(Date.now() + tok.expires_in * 1000),
+      ...(tok.refresh_token ? { refreshEnc: cipher.encrypt(tok.refresh_token) } : {}),
+    };
     await prisma.token.upsert({
       where: { userId: user.id },
-      create: {
-        userId: user.id,
-        accessToken: tok.access_token,
-        refreshEnc: encrypt(tok.refresh_token),
-        scope: tok.scope,
-        expiresAt: new Date(Date.now() + tok.expires_in * 1000),
-      },
-      update: {
-        accessToken: tok.access_token,
-        refreshEnc: encrypt(
-          tok.refresh_token ??
-            decrypt(
-              (
-                await prisma.token.findUnique({ where: { userId: user.id } })
-              )?.refreshEnc || ""
-            )
-        ),
-        scope: tok.scope,
-        expiresAt: new Date(Date.now() + tok.expires_in * 1000),
-      },
+      create: { userId: user.id, refreshEnc: '', ...tokenData },
+      update: tokenData,
     });
 
-    reply.setCookie("sid", user.id, {
-      path: "/",
-      httpOnly: true,
-      sameSite: "lax",
-      secure: false,
-    });
-    reply.redirect(process.env.FRONTEND_ORIGIN || "/");
+    const session = await createSession(prisma, user.id, config.sessionTtlDays);
+    reply.setCookie(SESSION_COOKIE, session.id, cookieOptions(config, config.sessionTtlDays * 86_400));
+    return backToFrontend(reply);
   });
 
-  // Logout endpoint
-  fastify.post("/auth/logout", async (req, reply) => {
-    const userId = req.cookies.sid;
-    
-    // Clear the session cookie
-    reply.clearCookie("sid", {
-      path: "/",
-      httpOnly: true,
-      sameSite: "lax",
-      secure: false,
-    });
-
-    // Optionally, you could also delete the user's token from the database
-    // but keeping it allows for seamless re-login without re-authorization
-    
-    return { success: true, message: "Logged out successfully" };
+  fastify.post('/auth/logout', async (req, reply) => {
+    const sid = fastify.readSessionId(req);
+    if (sid) await deleteSession(prisma, sid);
+    reply.clearCookie(SESSION_COOKIE, cookieOptions(config));
+    return { success: true };
   });
-});
-
-function cryptoRandom() {
-  return [...crypto.getRandomValues(new Uint8Array(16))]
-    .map((b) => b.toString(16).padStart(2, "0"))
-    .join("");
 }
