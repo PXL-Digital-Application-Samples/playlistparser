@@ -20,6 +20,11 @@ const router = useRouter();
 
 const TAB_VIEWS = { taste: InsightsTaste, listening: InsightsListening, timeline: InsightsTimeline, discover: InsightsDiscover };
 const current = computed(() => INSIGHT_TABS.find((t) => t.key === props.tab) ?? INSIGHT_TABS[0]);
+// What each tab is built from: Spotify shares likes and top-50 rankings, but
+// not how often you played or skipped a song.
+const basis = computed(() => (props.tab === 'listening'
+  ? "Based on Spotify's rankings of what you play most and your last 50 plays. Spotify doesn't share play counts or skips."
+  : "Based on your liked songs, not on how often you play them: Spotify doesn't share play counts or skips."));
 
 // ?lens=… in a link still sets the shared setting.
 if (route.query.lens === 'all' || route.query.lens === 'handpicked') lens.value = route.query.lens;
@@ -109,6 +114,8 @@ const needsReauth = computed(() =>
       >{{ t.label }}</router-link>
     </nav>
 
+    <p class="basis">{{ basis }}</p>
+
     <div v-if="error" class="alert alert-error" role="alert">{{ error }}</div>
     <div v-if="needsReauth" class="alert alert-warn" role="status">
       Your top artists, recent plays and followed artists need extra permissions from Spotify.
@@ -140,8 +147,9 @@ const needsReauth = computed(() =>
 .tabs {
   display: flex; gap: 4px; overflow-x: auto; scrollbar-width: none;
   position: sticky; top: var(--header-h); z-index: 10;
-  margin: 0 -4px 24px; padding: 8px 4px; background: var(--bg); border-bottom: 1px solid var(--border);
+  margin: 0 -4px 12px; padding: 8px 4px; background: var(--bg); border-bottom: 1px solid var(--border);
 }
+.basis { margin: 0 0 24px; font-size: 13px; color: var(--muted); max-width: 75ch; }
 .tab {
   padding: 7px 16px; min-height: 36px; display: inline-flex; align-items: center; border-radius: 999px;
   color: var(--muted); text-decoration: none; font-weight: 650; font-size: 14.5px; white-space: nowrap;
