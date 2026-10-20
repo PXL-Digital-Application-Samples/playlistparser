@@ -4,6 +4,7 @@ import { useRoute, useRouter } from 'vue-router';
 import { endpoints, describeError, spotifyUrl } from '../api.js';
 import { loadPlaylists, plural } from '../playlistCache.js';
 import Icon from '../components/Icon.vue';
+import PlayButton from '../components/PlayButton.vue';
 
 // Compare two playlists: what's only in A, in both, only in B. Read-only, like
 // everything else; it shows what merging would add without doing it.
@@ -121,8 +122,10 @@ const names = (t) => t.artists.map((x) => x.name).join(', ');
         <p v-if="!songs.length" class="muted">No songs here.</p>
         <ul v-else class="rows" role="list">
           <li v-for="s in songs" :key="s.id" class="row">
-            <img v-if="s.image" :src="s.image" alt="" loading="lazy" />
-            <span v-else class="noimg"></span>
+            <span class="cover playable">
+              <img v-if="s.image" :src="s.image" alt="" loading="lazy" />
+              <PlayButton :track="{ id: s.id, name: s.name, artist: names(s), isrc: s.isrc, image: s.image }" :size="28" center />
+            </span>
             <span class="row-text">
               <a :href="spotifyUrl('track', s.id)" target="_blank" rel="noopener noreferrer" class="sp-link">{{ s.name }}</a>
               <span>
@@ -163,7 +166,8 @@ const names = (t) => t.artists.map((x) => x.name).join(', ');
 
 .rows { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
 .row { display: grid; grid-template-columns: 40px 1fr; gap: 12px; align-items: center; padding: 4px 0; }
-.row img, .row .noimg { width: 40px; height: 40px; border-radius: 4px; object-fit: cover; background: var(--surface-muted); }
+.row .cover { position: relative; width: 40px; height: 40px; border-radius: 4px; background: var(--surface-muted); }
+.row .cover img { width: 100%; height: 100%; border-radius: 4px; object-fit: cover; display: block; }
 .row-text { display: flex; flex-direction: column; min-width: 0; font-size: 14px; }
 .row-text > a, .row-text > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .row-text > a { font-weight: 600; }

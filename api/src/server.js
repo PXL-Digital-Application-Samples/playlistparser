@@ -21,6 +21,7 @@ import meRoutes from './routes/me.js';
 import playlistRoutes from './routes/playlists.js';
 import insightsRoutes from './routes/insights.js';
 import libraryRoutes from './routes/library.js';
+import previewRoutes from './routes/preview.js';
 
 let config;
 try {
@@ -128,6 +129,7 @@ await app.register(async (api) => {
   await api.register(playlistRoutes);
   await api.register(insightsRoutes);
   await api.register(libraryRoutes);
+  await api.register(previewRoutes);
 }, { prefix: config.basePath });
 
 // Housekeeping: expired sessions and old export jobs.

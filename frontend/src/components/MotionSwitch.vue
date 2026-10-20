@@ -5,7 +5,7 @@ import { calm, setCalm } from '../motion.js';
 <template>
   <button type="button" role="switch" class="motion-switch" :aria-checked="calm" @click="setCalm(!calm)">
     <span class="track" aria-hidden="true"><span class="thumb"></span></span>
-    <span>Calm mode</span>
+    <span>Zen mode</span>
   </button>
 </template>
 

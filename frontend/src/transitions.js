@@ -3,7 +3,7 @@ import { motionOn } from './motion.js';
 
 // Page transitions with the browser's View Transitions API: the page fades
 // and slides, and a clicked cover flies into the next page's big cover (and
-// back again). Browsers without the API, and Calm mode, switch instantly.
+// back again). Browsers without the API, and Zen mode, switch instantly.
 //
 // The cover pair is matched by route: clicking a link that contains an image
 // remembers that image and its destination (heroPath). The element on each

@@ -7,6 +7,7 @@ import Icon from './components/Icon.vue';
 import StatusPanel from './components/StatusPanel.vue';
 import ThemeSwitch from './components/ThemeSwitch.vue';
 import MotionSwitch from './components/MotionSwitch.vue';
+import PlayerDock from './components/PlayerDock.vue';
 import { INSIGHT_TABS } from './nav.js';
 
 const router = useRouter();
@@ -152,6 +153,8 @@ const shell = computed(() => loading.value || me.value);
       </div>
       <router-view :me="me" :me-loading="loading" />
     </main>
+
+    <PlayerDock v-if="me" />
 
     <!-- Phone: bottom tabs -->
     <nav v-if="me" class="tabbar" aria-label="Main">

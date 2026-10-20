@@ -2,6 +2,7 @@
 import { ref, computed } from 'vue';
 import { spotifyUrl } from '../api.js';
 import { familyColor, FAMILY_ORDER } from '../families.js';
+import { play } from '../player.js';
 
 // Every song with a known tempo: release year (x) vs BPM (y), dot size =
 // Last.fm listeners, colour = genre family. Hover for details, click to play.
@@ -42,6 +43,12 @@ const families = computed(() => {
   for (const p of props.points) counts.set(p.family ?? 'other', (counts.get(p.family ?? 'other') || 0) + 1);
   return FAMILY_ORDER.filter((f) => counts.has(f)).map((f) => ({ f, n: counts.get(f) }));
 });
+// A click plays the song's preview; Ctrl/Cmd-click still opens Spotify.
+function onDot(e, p) {
+  if (e.metaKey || e.ctrlKey) return;
+  e.preventDefault();
+  play({ id: p.id, name: p.name, artist: p.artist, isrc: p.isrc, image: p.image, bpm: p.bpm });
+}
 function toggle(f) {
   const s = new Set(hidden.value);
   s.has(f) ? s.delete(f) : s.add(f);
@@ -77,6 +84,7 @@ function toggle(f) {
           tabindex="-1"
           @mouseenter="hover = p"
           @focus="hover = p"
+          @click="onDot($event, p)"
         >
           <circle :cx="p.cx" :cy="p.cy" :r="p.r" :fill-opacity="(hover && hover.id !== p.id) || (spot && (p.family ?? 'other') !== spot) ? 0.15 : 0.85"
             :style="{ fill: p.color, stroke: hover?.id === p.id ? 'var(--text)' : 'var(--surface)' }" :stroke-width="hover?.id === p.id ? 2 : 1" />
@@ -97,7 +105,7 @@ function toggle(f) {
         </div>
       </div>
     </div>
-    <p class="muted small">Tempo from Deezer, listeners from Last.fm, genre families from Last.fm tags. Bigger dot = more listeners. Click a dot to play.</p>
+    <p class="muted small">Tempo from Deezer, listeners from Last.fm, genre families from Last.fm tags. Bigger dot = more listeners. Click a dot to hear a preview.</p>
   </div>
 </template>
 

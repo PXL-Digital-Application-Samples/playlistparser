@@ -10,6 +10,7 @@ import LikedCover from '../components/LikedCover.vue';
 import { heroName } from '../transitions.js';
 import BarList from '../components/BarList.vue';
 import LensToggle from '../components/LensToggle.vue';
+import PlayButton from '../components/PlayButton.vue';
 
 // `id` comes from the route (router uses `props: true`).
 const props = defineProps({ me: Object, meLoading: Boolean, id: String });
@@ -549,8 +550,10 @@ function exportToCsv() {
                 <td class="num col-pos">{{ t.position + 1 }}</td>
                 <td class="col-title">
                   <div class="title-cell">
-                    <img v-if="t.album?.image" :src="t.album.image" alt="" class="row-cover" loading="lazy" decoding="async" />
-                    <span v-else class="row-cover"></span>
+                    <span class="row-cover playable">
+                      <img v-if="t.album?.image" :src="t.album.image" alt="" loading="lazy" decoding="async" />
+                      <PlayButton v-if="t.id" :track="{ id: t.id, name: t.name, artist: artistNames(t), isrc: t.isrc, image: t.album?.image }" :size="26" center />
+                    </span>
                     <span class="title-text">
                       <span class="clip" :title="t.name">
                         <a v-if="t.id" :href="spotifyUrl('track', t.id)" target="_blank" rel="noopener noreferrer" class="sp-link">{{ t.name }}</a>
@@ -755,7 +758,8 @@ a.card-sub { color: var(--link); }
 th.num .th-btn { justify-content: flex-end; }
 .sort-ind { font-size: 10px; color: var(--muted); min-width: 10px; }
 .title-cell { display: flex; align-items: center; gap: 10px; min-width: 0; }
-.row-cover { width: 32px; height: 32px; border-radius: 4px; object-fit: cover; flex: none; background: var(--surface-muted); }
+.row-cover { position: relative; width: 32px; height: 32px; border-radius: 4px; flex: none; background: var(--surface-muted); }
+.row-cover img { width: 100%; height: 100%; border-radius: 4px; object-fit: cover; display: block; }
 .title-text { display: flex; flex-direction: column; min-width: 0; }
 .clip { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .row-tags { display: flex; flex-wrap: wrap; gap: 4px; }

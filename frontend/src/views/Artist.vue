@@ -9,6 +9,7 @@ import { syncVersion } from '../status.js';
 import { heroName, heroFallback } from '../transitions.js';
 import Icon from '../components/Icon.vue';
 import BarList from '../components/BarList.vue';
+import PlayButton from '../components/PlayButton.vue';
 
 // Everything in your library by one artist.
 const props = defineProps({ me: Object, meLoading: Boolean, id: String });
@@ -100,8 +101,10 @@ watch(() => props.id, () => (songsShown.value = SONGS_STEP));
           <p v-if="!artist.counts.songs" class="muted">You haven't saved or added any songs by {{ artist.name }} yet.</p>
           <ol v-else class="song-list" role="list">
             <li v-for="s in artist.songs.slice(0, songsShown)" :key="s.id" class="song">
-              <img v-if="s.image" :src="s.image" alt="" loading="lazy" />
-              <span v-else class="noimg"></span>
+              <span class="cover playable">
+                <img v-if="s.image" :src="s.image" alt="" loading="lazy" />
+                <PlayButton :track="{ id: s.id, name: s.name, artist: s.artists.map((a) => a.name).join(', '), isrc: s.isrc, image: s.image }" :size="28" center />
+              </span>
               <div class="song-main">
                 <p class="song-title">
                   <a :href="spotifyUrl('track', s.id)" target="_blank" rel="noopener noreferrer" class="sp-link">{{ s.name }}</a>
@@ -193,7 +196,8 @@ watch(() => props.id, () => (songsShown.value = SONGS_STEP));
 .song-list { list-style: none; margin: 0; padding: 0; }
 .song { display: grid; grid-template-columns: 40px minmax(0, 1fr) auto 44px; gap: 12px; align-items: center; padding: 8px 0; border-top: 1px solid var(--border); }
 .song:first-child { border-top: none; }
-.song img, .song .noimg { width: 40px; height: 40px; border-radius: 4px; object-fit: cover; background: var(--surface-muted); }
+.song .cover { position: relative; width: 40px; height: 40px; border-radius: 4px; background: var(--surface-muted); }
+.song .cover img { width: 100%; height: 100%; border-radius: 4px; object-fit: cover; display: block; }
 .song-main { min-width: 0; }
 .song-title { margin: 0; font-weight: 650; display: flex; align-items: center; gap: 6px; }
 .song-title a { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -233,7 +237,7 @@ watch(() => props.id, () => (songsShown.value = SONGS_STEP));
   .hero-row { flex-direction: column; align-items: flex-start; gap: 16px; }
   .portrait { width: 132px; height: 132px; }
   .song { grid-template-columns: 40px minmax(0, 1fr) 40px; }
-  .song img, .song .noimg { grid-row: 1; }
+  .song .cover { grid-row: 1; }
   .len { grid-row: 1; grid-column: 3; }
   .song-places { grid-row: 2; grid-column: 2 / 4; justify-content: flex-start; max-width: none; }
 }

@@ -19,6 +19,7 @@ export function briefSong(t) {
     release_date: t.album?.release_date ?? null,
     duration_ms: t.duration_ms ?? null,
     explicit: t.explicit ?? null,
+    isrc: t.isrc ?? null,
   };
 }
 

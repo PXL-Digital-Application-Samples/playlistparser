@@ -9,6 +9,7 @@ import { syncVersion } from '../status.js';
 import { heroName, heroFallback } from '../transitions.js';
 import Icon from '../components/Icon.vue';
 import BarList from '../components/BarList.vue';
+import PlayButton from '../components/PlayButton.vue';
 
 // Your songs from one album, against its full track list.
 const props = defineProps({ me: Object, meLoading: Boolean, id: String });
@@ -90,7 +91,10 @@ const TYPES = { album: 'Album', single: 'Single', compilation: 'Compilation' };
           </div>
           <ol v-if="album.tracklist" class="tracklist" role="list">
             <li v-for="t in album.tracklist" :key="t.id" class="track" :class="{ have: t.in_library }">
-              <span class="no num">{{ t.number }}</span>
+              <span class="no num playable">
+                <span class="n">{{ t.number }}</span>
+                <PlayButton :track="{ id: t.id, name: t.name, artist: album.artists.map((a) => a.name).join(', '), image: album.image }" :size="26" center />
+              </span>
               <div class="t-main">
                 <p class="t-title">
                   <a :href="spotifyUrl('track', t.id)" target="_blank" rel="noopener noreferrer" class="sp-link">{{ t.name }}</a>
@@ -157,10 +161,11 @@ const TYPES = { album: 'Album', single: 'Single', compilation: 'Compilation' };
 .side { display: flex; flex-direction: column; gap: 20px; }
 
 .tracklist { list-style: none; margin: 0; padding: 0; }
-.track { display: grid; grid-template-columns: 28px minmax(0, 1fr) 48px; gap: 10px; align-items: center; padding: 8px 6px; border-radius: 8px; color: var(--muted); }
+.track { display: grid; grid-template-columns: 30px minmax(0, 1fr) 48px; gap: 10px; align-items: center; padding: 8px 6px; border-radius: 8px; color: var(--muted); }
 .track.have { color: var(--text); background: var(--accent-soft); margin-bottom: 2px; }
 .track:not(.have) .sp-link { color: var(--muted); }
-.no { font-size: 13px; color: var(--muted); text-align: right; }
+.no { position: relative; height: 28px; display: flex; align-items: center; justify-content: flex-end; font-size: 13px; color: var(--muted); }
+.no.playable:hover .n, .no.playable:focus-within .n { opacity: 0; }
 .t-main { min-width: 0; }
 .t-title { margin: 0; display: flex; align-items: center; gap: 6px; font-weight: 600; }
 .t-title a { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

@@ -75,6 +75,9 @@ export const endpoints = {
   libraryDuplicates: () => get('/library/duplicates'),
   artist: (id) => get(`/library/artists/${enc(id)}`),
   album: (id) => get(`/library/albums/${enc(id)}`),
+  preview: ({ isrc, title, artist }) => get(`/preview?${new URLSearchParams({
+    ...(isrc ? { isrc } : {}), ...(title ? { title } : {}), ...(artist ? { artist } : {}),
+  })}`),
 };
 
 // Human-readable messages for API error codes.

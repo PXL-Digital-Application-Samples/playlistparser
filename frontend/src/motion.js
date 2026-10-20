@@ -1,7 +1,8 @@
 import { ref, computed, watch } from 'vue';
 import { gsap } from 'gsap';
 
-// Motion preference. `calm` is null until the viewer chooses: then the app
+// Motion preference ("Zen mode" in the UI). `calm` is null until the viewer
+// chooses: then the app
 // follows the system's "reduce motion" setting. Calm turns off every
 // animation in the app (also the CSS ones, via data-motion on <html>).
 const KEY = 'pp.motion';

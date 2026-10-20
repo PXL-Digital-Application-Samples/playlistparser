@@ -1,5 +1,6 @@
 <script setup>
 import { heroName } from '../transitions.js';
+import PlayButton from './PlayButton.vue';
 // Ranked cover grid: #1 gets a big tile, the rest smaller ones.
 defineProps({
   items: { type: Array, required: true }, // [{ id, name, sub, image, image_lg, url (Spotify) or to (in-app) }]
@@ -8,7 +9,7 @@ defineProps({
 
 <template>
   <ol v-reveal="'cascade'" class="grid" aria-label="Ranked by Spotify">
-    <li v-for="(it, i) in items" :key="it.id" class="cell" :class="{ hero: i === 0 }">
+    <li v-for="(it, i) in items" :key="it.id" class="cell playable" :class="{ hero: i === 0 }">
       <component
         :is="it.to ? 'router-link' : 'a'"
         :to="it.to || undefined"
@@ -35,6 +36,7 @@ defineProps({
         <span>{{ it.sub }}</span>
       </div>
       </component>
+      <PlayButton v-if="!it.to" :track="{ id: it.id, name: it.name, artist: it.sub, image: it.image }" :size="i === 0 ? 46 : 32" />
     </li>
   </ol>
 </template>

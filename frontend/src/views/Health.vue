@@ -6,6 +6,7 @@ import { plural } from '../playlistCache.js';
 import { syncVersion, sync, syncing } from '../status.js';
 import Icon from '../components/Icon.vue';
 import BarList from '../components/BarList.vue';
+import PlayButton from '../components/PlayButton.vue';
 
 // Library health: problems you may want to fix on Spotify. Everything here is
 // read from the synced copy of your library; nothing is changed.
@@ -90,8 +91,10 @@ const names = (t) => t.artists.map((a) => a.name).join(', ');
       <p v-if="!dupes.total" class="ok-line"><Icon name="heart" :size="16" /> Every song is in at most one playlist.</p>
       <ul v-else class="rows" role="list">
         <li v-for="d in dupes.songs.slice(0, dupesShown)" :key="d.track.id" class="row">
-          <img v-if="d.track.image" :src="d.track.image" alt="" class="row-cover" loading="lazy" />
-          <span v-else class="row-cover"></span>
+          <span class="row-cover playable">
+            <img v-if="d.track.image" :src="d.track.image" alt="" loading="lazy" />
+            <PlayButton :track="{ id: d.track.id, name: d.track.name, artist: names(d.track), isrc: d.track.isrc, image: d.track.image }" :size="30" center />
+          </span>
           <div class="row-main">
             <p class="row-title">
               <a :href="spotifyUrl('track', d.track.id)" target="_blank" rel="noopener noreferrer" class="sp-link">{{ d.track.name }}</a>
@@ -179,7 +182,8 @@ section[id] { scroll-margin-top: calc(var(--header-h) + 16px); }
   padding: 10px 0; border-top: 1px solid var(--border);
 }
 .row:first-child { border-top: none; }
-.row-cover { width: 44px; height: 44px; border-radius: 6px; object-fit: cover; background: var(--surface-muted); }
+.row-cover { position: relative; display: block; width: 44px; height: 44px; border-radius: 6px; background: var(--surface-muted); }
+.row-cover img { width: 100%; height: 100%; border-radius: 6px; object-fit: cover; display: block; }
 .row-main { min-width: 0; }
 .row-title { margin: 0; font-weight: 650; display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
 .row-sub { margin: 2px 0 0; font-size: 13px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

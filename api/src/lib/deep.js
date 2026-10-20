@@ -50,6 +50,7 @@ export function soundMap(tracks, { bpm, artists, listeners }) {
       listeners: listeners.get(t.id) ?? null,
       family: familyOf(infoOf(artists, t)),
       image: t.album?.image ?? null,
+      isrc: t.isrc ?? null, // lets the record player find a preview
     });
   }
   return { points: points.slice(0, 1500), coverage: { with_bpm: points.length, songs: withIsrc } };
