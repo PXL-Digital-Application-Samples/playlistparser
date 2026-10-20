@@ -1,8 +1,8 @@
 # PXL Playlist Parser
 
-A Spotify playlist analyzer: a Vue 3 frontend and a Fastify + Prisma API backed by PostgreSQL. Log in with Spotify, get statistics for your playlists and Liked Songs, look for duplicates, explore your taste on the Insights page and export everything to CSV. The app never changes anything on Spotify; it only reads.
+A Spotify library analyzer: a Vue 3 frontend and a Fastify + Prisma API backed by PostgreSQL. Log in with Spotify to get statistics for every playlist and your Liked Songs, find the same song in several playlists and songs Spotify greyed out, explore your taste, open any artist or album to see what you have from it, and export everything to CSV. The app never changes anything on Spotify; it only reads.
 
-<img src="assets/home.png" alt="Playlist overview" width="800">
+<img src="assets/home.png" alt="Home: library totals, highlights, library health and recently changed playlists" width="800">
 
 *Screenshots use the built-in demo mode with made-up data (see [Demo mode](#demo-mode)).*
 
@@ -25,34 +25,37 @@ Library-wide data is copied to the database by a background **library sync** (on
 
 ## Features
 
-- List your playlists, with your **Liked Songs** pinned first and treated like a playlist (stats, duplicates, export). Playlists you only *follow* are shown but can't be analyzed (see [Spotify limitations](#spotify-limitations)).
-- Per-playlist statistics: track/artist counts, top artists and albums, total and average length, explicit percentage, release decades, release range, when tracks were added, contributors on collaborative playlists.
-- Last.fm listener counts: average listeners, most-listened tracks and hidden gems. Looked up in the background and cached in the database.
-- Duplicate detection: exact duplicates (same Spotify track) and the same recording on different releases (same ISRC).
-- Merge simulation between two playlists (API only: `GET /simulate-merge?a=…&b=…`).
-- CSV export of one playlist, or of all your playlists as a background job with progress.
-- Liked Songs separates songs you **liked one by one** from **whole albums you saved** (Spotify adds every track of a saved album), so a few saved albums don't dominate your statistics.
-- **Insights** page (see below).
-- Every song, album and artist links to Spotify.
+The app has four sections, in a side rail on desktop and a tab bar on phones: **Home**, **Playlists**, **Insights** and **Health**. Library sync, public-data lookups and CSV exports report their progress in one status area. It has a dark theme (the default) and a light theme; it follows the device setting unless you pick one.
 
-<img src="assets/liked-songs.png" alt="Liked Songs statistics" width="800">
+- **Home**: totals for your whole library, highlight cards, library health counts, recently changed playlists and your top artists lately.
+- **Playlists**: all your playlists with **Liked Songs** pinned first and treated like a playlist. Playlists you only *follow* are listed but can't be analyzed (see [Spotify limitations](#spotify-limitations)). Search, filter and sort are kept in the URL.
+- **Playlist page**: track/artist counts, top artists and albums, length, explicit share, release decades, when tracks were added, contributors on collaborative playlists, Last.fm listener counts (most listened and hidden gems), duplicates within the playlist (same track, or the same recording on another release), and a track table you can filter and sort.
+- **Compare two playlists**: songs only in A, in both, and only in B, and what merging one into the other would add.
+- **Health**: the same song (recording) in two or more playlists, songs Spotify greys out, and liked songs that are in no playlist.
+- **Artist and album pages**: everything in your library by one artist or from one album: your songs and which playlists they're in, likes per year, how much of an album you have, tags, origin and similar artists. Names everywhere link to these pages; "Open in Spotify" is always one click away.
+- **CSV export** of one playlist, or of all your playlists as a background job.
+- Liked Songs separates songs you **liked one by one** from **whole albums you saved** (Spotify adds every track of a saved album). One setting, "Count songs from saved albums", applies to every page.
+- Every chart has a **Show as list** view with the same data as a table, for keyboard and screen-reader users.
 
-### Insights
-
-A page about your taste rather than one playlist, built from your Liked Songs, your Spotify top artists and tracks, your recent plays and public music data.
+<img src="assets/liked-songs.png" alt="Liked Songs: overview, top artists and albums, timeline" width="800">
 
 | | |
 |---|---|
-| <img src="assets/insights-fingerprint.png" alt="Taste fingerprint and highlights"> | <img src="assets/insights-what-you-play.png" alt="What you play"> |
-| **Taste fingerprint**: what you play (decades, song length, explicit share, artist variety) against what you like, plus highlight cards. | **What you play**: your top songs and artists over 4 weeks, 6 months and a year. |
-| <img src="assets/insights-cover-wall.png" alt="Cover wall"> | <img src="assets/insights-calendar.png" alt="Like calendar and eras"> |
-| **Cover wall**: albums sized by how much you liked from them. | **Like calendar** and **eras**: when you liked songs, with covers per year. |
-| <img src="assets/insights-sound-map.png" alt="Sound map"> | <img src="assets/insights-taste-eras.png" alt="Taste eras"> |
-| **Sound map**: every song by release year and tempo (Deezer), sized by Last.fm listeners. | **Taste eras**: genre families per year, from Last.fm tags. |
-| <img src="assets/insights-music-atlas.png" alt="Music atlas"> | <img src="assets/insights-constellation.png" alt="Artist constellation"> |
-| **Music atlas**: where your artists come from (MusicBrainz). | **Artist constellation**: your artists linked by similarity, plus similar artists you don't have yet. |
+| <img src="assets/artist.png" alt="Artist page"> | <img src="assets/health.png" alt="Library health"> |
+| **Artist page**: your songs by one artist, where you keep them, likes per year, albums and similar artists. | **Health**: songs in several playlists, songs Spotify greyed out, liked songs in no playlist. |
+| <img src="assets/compare.png" alt="Compare two playlists"> | <img src="assets/light-theme.png" alt="Album page in the light theme"> |
+| **Compare**: only in A, in both, only in B. | **Light theme**, here on an album page with its full track list. |
 
-Further sections open on demand: library growth, music age, artist depth, genres, a classical corner (composers and works), followed artists, saved albums, podcasts, Liked Songs vs. playlists and unplayable songs.
+### Insights
+
+Four pages about your taste rather than one playlist, built from your Liked Songs, your Spotify top artists and tracks, your recent plays and public music data.
+
+| | |
+|---|---|
+| <img src="assets/insights-taste.png" alt="Taste"> | <img src="assets/insights-listening.png" alt="Listening"> |
+| **Taste**: a one-line summary of your taste with its fingerprint, highlight cards, release decades (what you play against what you like), the cover wall, music age and song length, artist depth, genres and a classical corner. | **Listening**: your top songs and artists over 4 weeks, 6 months and a year, how your top artists moved, when you listen, recent plays, followed artists, saved albums and podcasts. |
+| <img src="assets/insights-timeline.png" alt="Timeline"> | <img src="assets/insights-discover.png" alt="Discover"> |
+| **Timeline**: a like calendar, your albums and artists per year, library growth per month and whole-album saves. | **Discover**: the sound map (release year against tempo from Deezer), taste eras (genre families per year from Last.fm tags), the music atlas (artist origins from MusicBrainz) and the artist constellation. |
 
 ## Spotify limitations
 
@@ -77,7 +80,7 @@ The app requests these read-only scopes: `playlist-read-private`, `playlist-read
 
 ## Last.fm setup (optional)
 
-Create an API account at <https://www.last.fm/api/account/create> (the callback URL can stay empty) and set `LASTFM_API_KEY`. Without it the app still works, but listener counts, genre tags and similar artists are missing: the playlist page and the Insights page say so, and the taste eras, genres and artist constellation stay empty. The key is a server-side secret: it belongs in the API's environment, never in the frontend build.
+Create an API account at <https://www.last.fm/api/account/create> (the callback URL can stay empty) and set `LASTFM_API_KEY`. Without it the app still works, but listener counts, genre tags and similar artists are missing: the playlist page and the Insights Discover page say so, and the taste eras, genres, artist constellation and similar artists stay empty. The key is a server-side secret: it belongs in the API's environment, never in the frontend build.
 
 Deezer and MusicBrainz need no account or configuration; the API only needs outbound internet access to them.
 
@@ -145,7 +148,7 @@ GET  /playlists/:id/stats                statistics
 GET  /playlists/:id/listeners            Last.fm listener stats (poll until complete)
 GET  /playlists/:id/simulate-dedupe      duplicate report (read-only)
 GET  /playlists/:id/export               CSV download
-GET  /simulate-merge?a=PL1&b=PL2         compare two playlists
+GET  /simulate-merge?a=PL1&b=PL2         compare two playlists (counts, plus the songs only in A, in both, only in B)
 
 POST /playlists/export-all               start a bulk export job
 GET  /playlists/export-progress/:jobId   job progress
@@ -161,13 +164,17 @@ GET  /library/sync                       library sync progress
 POST /library/sync                       start a library sync
 GET  /library/enrichment                 enrichment progress per source
 POST /library/enrichment                 start enrichment
+GET  /library/overview                   totals, health counts, recently changed playlists (synced library)
+GET  /library/duplicates                 the same recording in two or more playlists (synced library)
+GET  /library/artists/:id                everything in the library by one artist (Spotify artist id)
+GET  /library/albums/:id                 your songs from one album, with its track list (Spotify album id)
 
 GET  /healthz                            liveness (no database check)
 GET  /readyz                             readiness (checks the database)
 GET  /metrics                            Prometheus metrics
 ```
 
-`:id` is a Spotify playlist id, or `liked` for the user's Liked Songs. `POST` requests must use `Content-Type: application/json`. The API closes gracefully on `SIGTERM`.
+Under `/playlists`, `:id` is a Spotify playlist id, or `liked` for the user's Liked Songs. `POST` requests must use `Content-Type: application/json`. The API closes gracefully on `SIGTERM`.
 
 ## Local development
 
@@ -192,7 +199,9 @@ npm install
 npm run dev
 ```
 
-Open <http://127.0.0.1:5173> (not `localhost`; the Spotify redirect and the cookies are tied to `127.0.0.1`) and click **Log in with Spotify**.
+Open <http://127.0.0.1:5173> (not `localhost`; the Spotify redirect and the cookies are tied to `127.0.0.1`) and click **Log in with Spotify** on the welcome page:
+
+<img src="assets/welcome.png" alt="Welcome page with the Log in with Spotify button" width="800">
 
 Run the API unit tests with `npm test` in `api/`.
 
