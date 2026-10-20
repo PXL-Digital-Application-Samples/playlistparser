@@ -52,7 +52,7 @@ const peak = computed(() => {
       :aria-label="`Recent plays by hour of day; most plays between ${peak}`">
       <circle :cx="C" :cy="C" :r="OUTER" fill="none" stroke="var(--border)" stroke-dasharray="2 4" />
       <circle :cx="C" :cy="C" :r="INNER" fill="none" stroke="var(--border)" />
-      <path v-for="b in bars" :key="b.h" v-show="b.d" :d="b.d || ''" :style="{ fill: 'var(--accent)' }">
+      <path v-for="b in bars" :key="b.h" v-show="b.d" :d="b.d || ''" :style="{ fill: 'var(--mark)' }">
         <title>{{ String(b.h).padStart(2, '0') }}:00 — {{ plural(b.n, 'play') }}</title>
       </path>
       <text v-for="l in labels" :key="l.h" :x="l.x" :y="l.y" text-anchor="middle" class="hour">{{ String(l.h).padStart(2, '0') }}h</text>

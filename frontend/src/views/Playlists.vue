@@ -196,7 +196,7 @@ const exporting = computed(() => exportJob.value && !['completed', 'error'].incl
 .toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin: 0 0 20px; }
 .search {
   display: flex; align-items: center; gap: 8px; flex: 1 1 260px;
-  background: var(--surface); border: 1px solid var(--border); border-radius: 999px;
+  background: var(--surface); border: 1px solid var(--border-strong); border-radius: 999px;
   padding: 0 14px; color: var(--muted);
 }
 .search:focus-within { outline: 3px solid var(--focus); outline-offset: 1px; }
@@ -205,7 +205,7 @@ const exporting = computed(() => exportJob.value && !['completed', 'error'].incl
 .sort { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--muted); }
 .sort select {
   font: inherit; font-size: 13px; padding: 6px 8px; min-height: 32px; border-radius: 8px;
-  border: 1px solid var(--border); background: var(--surface); color: var(--text);
+  border: 1px solid var(--border-strong); background: var(--surface); color: var(--text);
 }
 
 .grid {

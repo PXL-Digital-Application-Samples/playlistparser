@@ -81,7 +81,7 @@ const DECADES = [['60s', 26], ['70s', 46], ['80s', 74], ['90s', 65], ['00s', 100
 .ex-taste { grid-column: span 2; }
 .ex-bars { display: flex; align-items: flex-end; gap: 8px; height: 110px; margin-top: 16px; }
 .ex-bars div { flex: 1; height: 100%; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; gap: 4px; }
-.ex-bars i { width: 100%; border-radius: 5px 5px 2px 2px; background: var(--accent); }
+.ex-bars i { width: 100%; border-radius: 5px 5px 2px 2px; background: var(--mark); }
 .ex-bars span { font-size: 11px; color: var(--muted); }
 .ex-covers { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; padding: 6px; background: var(--cover-bg); border-color: transparent; }
 .ex-covers i { aspect-ratio: 1; border-radius: 4px; }

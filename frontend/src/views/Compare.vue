@@ -152,7 +152,7 @@ const names = (t) => t.artists.map((x) => x.name).join(', ');
 .venn-cell strong { font-family: var(--font-display); font-size: 2rem; line-height: 1; }
 .venn-cell span { font-size: 13.5px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; }
 .venn-cell:hover { border-color: var(--border-strong); }
-.venn-cell[aria-pressed='true'] { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); background: var(--accent-soft); }
+.venn-cell[aria-pressed='true'] { border-color: var(--mark); box-shadow: inset 0 0 0 1px var(--mark); background: var(--accent-soft); }
 .venn-cell[aria-pressed='true'] span { color: var(--accent-strong); }
 .merge-line { margin: 12px 0 20px; }
 

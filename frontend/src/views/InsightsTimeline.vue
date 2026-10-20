@@ -106,7 +106,7 @@ const monthRows = computed(() => (lens.value?.over_time.months || []).map((m) =>
 .era-artists { margin: 2px 0 0; font-size: 12.5px; color: var(--muted); line-height: 1.4; }
 
 .chart-scroll { overflow-x: auto; }
-.bar { fill: var(--accent); }
+.bar { fill: var(--mark); }
 .axis-line { stroke: var(--border); }
 .axis { font-size: 10px; fill: var(--muted); }
 .explain { max-width: 70ch; margin: 0 0 12px; }

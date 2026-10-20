@@ -50,8 +50,8 @@ const pct = (x) => `${Math.round(x * 100)}%`;
 .plot { display: flex; align-items: stretch; gap: 8px; height: 190px; }
 .col { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; min-width: 0; }
 .track { position: relative; flex: 1; width: 100%; display: flex; align-items: flex-end; }
-.bar { display: block; width: 100%; border-radius: 6px 6px 2px 2px; background: var(--border-strong); min-height: 2px; }
-.bar.peak { background: var(--accent); }
+.bar { display: block; width: 100%; border-radius: 6px 6px 2px 2px; background: var(--mark-muted); min-height: 2px; }
+.bar.peak { background: var(--mark); }
 .mark { position: absolute; left: -3px; right: -3px; height: 3px; border-radius: 2px; background: var(--text); box-shadow: 0 0 0 2px var(--surface); }
 .val { font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
 .val.peak { color: var(--text); font-weight: 700; }
@@ -59,7 +59,7 @@ const pct = (x) => `${Math.round(x * 100)}%`;
 .legend { display: flex; flex-wrap: wrap; gap: 4px 16px; margin-top: 10px; font-size: 12.5px; color: var(--muted); }
 .legend span { display: inline-flex; align-items: center; gap: 6px; }
 .sw { display: inline-block; width: 14px; }
-.bar-sw { height: 10px; border-radius: 3px; background: var(--accent); }
+.bar-sw { height: 10px; border-radius: 3px; background: var(--mark); }
 .mark-sw { height: 3px; border-radius: 2px; background: var(--text); }
 @media (max-width: 480px) {
   .plot { gap: 4px; }

@@ -83,7 +83,7 @@ const exportRunning = computed(() => exportJob.value && !['completed', 'error'].
 .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--faint); flex: none; margin-top: 6px; }
 .dot.ok { background: var(--good); }
 .dot.warn { background: var(--warn-text); }
-.dot.live { background: var(--accent); animation: pulse 1s ease-in-out infinite alternate; }
+.dot.live { background: var(--mark); animation: pulse 1s ease-in-out infinite alternate; }
 @keyframes pulse { from { opacity: 0.35; } to { opacity: 1; } }
 .icon-btn { color: var(--muted); min-width: 28px; min-height: 28px; margin-top: -4px; }
 .warn-text { color: var(--warn-text); margin: 0; }

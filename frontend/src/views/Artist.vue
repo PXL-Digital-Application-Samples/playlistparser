@@ -207,7 +207,7 @@ watch(() => props.id, () => (songsShown.value = SONGS_STEP));
 
 .years { display: flex; align-items: flex-end; gap: 3px; height: 90px; }
 .ycol { flex: 1; height: 100%; display: flex; align-items: flex-end; }
-.ycol i { display: block; width: 100%; min-height: 2px; border-radius: 3px 3px 0 0; background: var(--accent); }
+.ycol i { display: block; width: 100%; min-height: 2px; border-radius: 3px 3px 0 0; background: var(--mark); }
 .year-axis { display: flex; justify-content: space-between; font-size: 12px; color: var(--muted); margin-top: 4px; }
 
 .mini-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }

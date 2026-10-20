@@ -99,7 +99,7 @@ const topDecade = computed(() => [...props.profile.decades].sort((a, b) => b.sha
 
 <style scoped>
 .fp { margin: 0; }
-.petal { fill: var(--accent); opacity: 0.9; }
+.petal { fill: var(--mark); opacity: 0.9; }
 .explicit-arc { stroke: var(--fam-pop); }
 .petal-compare { fill: none; stroke: var(--text); stroke-width: 1.5; stroke-dasharray: 4 3; }
 .dec { font-size: 11px; fill: var(--muted); }
@@ -108,6 +108,6 @@ const topDecade = computed(() => [...props.profile.decades].sort((a, b) => b.sha
 .legend { display: flex; flex-wrap: wrap; justify-content: center; gap: 4px 14px; font-size: 12px; color: var(--muted); }
 .legend span { display: inline-flex; align-items: center; gap: 5px; }
 .sw { width: 11px; height: 11px; border-radius: 3px; display: inline-block; }
-.petal-sw { background: var(--accent); }
+.petal-sw { background: var(--mark); }
 .compare-sw { border: 2px dashed var(--text); }
 </style>

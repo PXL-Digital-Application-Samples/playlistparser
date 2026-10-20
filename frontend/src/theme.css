@@ -22,6 +22,9 @@
   --accent-text: #f4b872;     /* accent-coloured text and links */
   --accent-soft: #2c2318;
   --accent-strong: #f8cd98;   /* text on --accent-soft */
+  /* Data marks and indicators (bars, progress, chart fills): >= 3:1 on --surface. */
+  --mark: #f0a95b;
+  --mark-muted: #4b5751;
   --spotify: #1ed760;
   --spotify-hover: #3be477;
   --spotify-ink: #03210e;
@@ -72,21 +75,23 @@
 @media (prefers-color-scheme: light) {
   :root:not([data-theme='dark']) {
     color-scheme: light;
-    --bg: #f2f4f3;
+    --bg: #dde2df;
     --surface: #ffffff;
-    --surface-muted: #e9edeb;
+    --surface-muted: #e2e7e4;
     --surface-raised: #ffffff;
-    --border: #d5dcd8;
-    --border-strong: #b9c3bd;
+    --border: #b4beb8;
+    --border-strong: #84908a;
     --text: #131a16;
     --muted: #535f58;
-    --faint: #9aa59f;
-    --accent: #f0a95b;
-    --accent-hover: #e8963e;
+    --faint: #8f9a94;
+    --accent: #eb9a3f;
+    --accent-hover: #e08a2a;
     --accent-ink: #2a1606;
     --accent-text: #94490a;
-    --accent-soft: #fcefdf;
-    --accent-strong: #713805;
+    --accent-soft: #fbe1c2;
+    --accent-strong: #6b3404;
+    --mark: #b85f0b;
+    --mark-muted: #8f9a94;
     --spotify: #1db954;
     --spotify-hover: #1ed760;
     --spotify-ink: #03210e;
@@ -100,8 +105,8 @@
     --tooltip-bg: #141a17;
     --tooltip-text: #ffffff;
     --cover-bg: #1a1f1c;
-    --chart-grid: #e7ebe9;
-    --heat-0: #e9edeb;
+    --chart-grid: #e3e8e5;
+    --heat-0: #e2e7e4;
     --fam-rock: #2a78d6;
     --fam-hip-hop: #eb6834;
     --fam-folk-country: #1baf7a;
@@ -116,27 +121,29 @@
     --seq-3: #278f53;
     --seq-4: #1a723f;
     --seq-5: #0b4f29;
-    --shadow: 0 1px 2px rgba(16, 24, 40, 0.06), 0 2px 8px rgba(16, 24, 40, 0.08);
+    --shadow: 0 1px 2px rgba(16, 24, 40, 0.10), 0 4px 14px rgba(16, 24, 40, 0.08);
   }
 }
 
 :root[data-theme='light'] {
   color-scheme: light;
-  --bg: #f2f4f3;
+  --bg: #dde2df;
   --surface: #ffffff;
-  --surface-muted: #e9edeb;
+  --surface-muted: #e2e7e4;
   --surface-raised: #ffffff;
-  --border: #d5dcd8;
-  --border-strong: #b9c3bd;
+  --border: #b4beb8;
+  --border-strong: #84908a;
   --text: #131a16;
   --muted: #535f58;
-  --faint: #9aa59f;
-  --accent: #f0a95b;
-  --accent-hover: #e8963e;
+  --faint: #8f9a94;
+  --accent: #eb9a3f;
+  --accent-hover: #e08a2a;
   --accent-ink: #2a1606;
   --accent-text: #94490a;
-  --accent-soft: #fcefdf;
-  --accent-strong: #713805;
+  --accent-soft: #fbe1c2;
+  --accent-strong: #6b3404;
+  --mark: #b85f0b;
+  --mark-muted: #8f9a94;
   --spotify: #1db954;
   --spotify-hover: #1ed760;
   --spotify-ink: #03210e;
@@ -150,8 +157,8 @@
   --tooltip-bg: #141a17;
   --tooltip-text: #ffffff;
   --cover-bg: #1a1f1c;
-  --chart-grid: #e7ebe9;
-  --heat-0: #e9edeb;
+  --chart-grid: #e3e8e5;
+  --heat-0: #e2e7e4;
   --fam-rock: #2a78d6;
   --fam-hip-hop: #eb6834;
   --fam-folk-country: #1baf7a;
@@ -166,7 +173,7 @@
   --seq-3: #278f53;
   --seq-4: #1a723f;
   --seq-5: #0b4f29;
-  --shadow: 0 1px 2px rgba(16, 24, 40, 0.06), 0 2px 8px rgba(16, 24, 40, 0.08);
+  --shadow: 0 1px 2px rgba(16, 24, 40, 0.10), 0 4px 14px rgba(16, 24, 40, 0.08);
 }
 
 /* ---- Base ---------------------------------------------------------------- */
@@ -268,7 +275,7 @@ a { color: var(--link); }
 .icon { flex: none; }
 
 /* Segmented control (aria-pressed buttons in a group). */
-.seg { display: inline-flex; background: var(--surface-muted); border-radius: 999px; padding: 3px; gap: 2px; }
+.seg { display: inline-flex; background: var(--surface-muted); border: 1px solid var(--border); border-radius: 999px; padding: 2px; gap: 2px; }
 .seg button {
   font: inherit; font-size: 13px; font-weight: 600; border: none; background: none; color: var(--muted);
   padding: 5px 14px; min-height: 30px; border-radius: 999px; cursor: pointer; white-space: nowrap;
@@ -345,7 +352,7 @@ a.sp-cover:hover img { filter: brightness(1.12) saturate(1.1); }
 @keyframes shimmer { to { background-position: -200% 0; } }
 
 .progress-track { display: inline-block; height: 6px; background: var(--surface-muted); border-radius: 3px; overflow: hidden; }
-.progress-fill { display: block; height: 100%; background: var(--accent); border-radius: 3px; transition: width 0.3s ease; }
+.progress-fill { display: block; height: 100%; background: var(--mark); border-radius: 3px; transition: width 0.3s ease; }
 
 .empty { text-align: center; padding: 40px 16px; color: var(--muted); }
 .empty h2 { color: var(--text); margin: 0 0 6px; font-size: 1.2rem; }

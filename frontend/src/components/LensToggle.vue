@@ -44,13 +44,13 @@ const toggle = () => (lens.value = lens.value === 'all' ? 'handpicked' : 'all');
 }
 .track {
   position: relative; width: 36px; height: 20px; border-radius: 999px; flex: none;
-  background: var(--surface-muted); border: 1px solid var(--border); transition: background 0.15s;
+  background: var(--surface-muted); border: 1px solid var(--border-strong); transition: background 0.15s;
 }
 .thumb {
   position: absolute; top: 2px; left: 2px; width: 14px; height: 14px; border-radius: 50%;
   background: var(--muted); transition: transform 0.15s, background 0.15s;
 }
-.switch[aria-checked='true'] .track { background: var(--accent); border-color: var(--accent); }
-.switch[aria-checked='true'] .thumb { transform: translateX(16px); background: var(--accent-ink); }
+.switch[aria-checked='true'] .track { background: var(--mark); border-color: var(--mark); }
+.switch[aria-checked='true'] .thumb { transform: translateX(16px); background: var(--surface); }
 .hint { margin: 0; font-size: 13px; color: var(--muted); }
 </style>

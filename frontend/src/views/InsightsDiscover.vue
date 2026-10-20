@@ -144,7 +144,7 @@ const constellationRows = computed(() => {
 .enrich .src { min-width: 260px; }
 .enrich .progress-track { width: 140px; }
 .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--faint); }
-.dot.running { background: var(--accent); }
+.dot.running { background: var(--mark); }
 .dot.completed { background: var(--good); }
 .dot.error { background: var(--danger-text); }
 @media (max-width: 640px) { .enrich .src { min-width: 0; flex-basis: 100%; } }

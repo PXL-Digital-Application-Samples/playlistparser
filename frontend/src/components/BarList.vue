@@ -7,7 +7,7 @@ const props = defineProps({
   rows: { type: Array, required: true }, // [{ label, value, sub?, to? (in-app), href? (Spotify) }]
   unit: { type: String, required: true },
   max: { type: Number, default: null },
-  color: { type: String, default: 'var(--accent)' },
+  color: { type: String, default: 'var(--mark)' },
 });
 const top = computed(() => props.max ?? Math.max(1, ...props.rows.map((r) => r.value)));
 const fmt = (v) => (typeof v === 'number' ? v.toLocaleString() : v);

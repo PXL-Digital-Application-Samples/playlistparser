@@ -695,7 +695,7 @@ a.card-sub { color: var(--link); }
 .explain { margin: 0 0 12px; color: var(--muted); font-size: 14px; max-width: 70ch; }
 .progress { display: flex; align-items: center; gap: 12px; font-size: 13px; color: var(--muted); margin-bottom: 12px; }
 .progress-track { flex: 0 0 160px; height: 6px; background: var(--surface-muted); border-radius: 3px; overflow: hidden; }
-.progress-fill { display: block; height: 100%; background: var(--accent); transition: width 0.3s ease; }
+.progress-fill { display: block; height: 100%; background: var(--mark); transition: width 0.3s ease; }
 .source { margin: 10px 0 0; font-size: 12px; color: var(--muted); }
 
 /* Track table: scrolls with the page; the header sticks under the section nav. */
@@ -703,7 +703,7 @@ a.card-sub { color: var(--link); }
 .tracks-head h2 { margin: 0; }
 .filter {
   display: flex; align-items: center; gap: 8px; flex: 0 1 320px;
-  background: var(--surface); border: 1px solid var(--border); border-radius: 999px;
+  background: var(--surface); border: 1px solid var(--border-strong); border-radius: 999px;
   padding: 0 12px; color: var(--muted);
 }
 .filter:focus-within { outline: 3px solid var(--focus); outline-offset: 1px; }
