@@ -53,6 +53,17 @@ On phones the side rail becomes a tab bar at the bottom:
 |---|---|---|
 | <img src="assets/phone-home.jpg" alt="Home on a phone" width="250"> | <img src="assets/phone-taste.jpg" alt="Taste on a phone" width="250"> | <img src="assets/phone-artist.jpg" alt="Artist page on a phone" width="250"> |
 
+### Animations
+
+The app is deliberately playful. **Zen mode** (next to the theme switch) turns every animation off, and the app starts in Zen mode when the device asks for reduced motion.
+
+- **Record player**: play buttons on covers and sound-map dots play a 30-second preview (from Deezer: Spotify no longer offers previews). A vinyl slides out of the cover and spins at the song's tempo, with bars around it that follow the real audio.
+- **Page transitions**: pages slide in, and a clicked cover flies into the next page's header (View Transitions API).
+- **Animated background**: a WebGL "liquid aurora" in the colour of the cover on screen, which swells with the music while a preview plays.
+- Numbers count up, bars grow and covers cascade in as you scroll; charts glide to new values, covers slide to their new rank, and the artist constellation can be dragged around.
+- **Sound map time-lapse**, **Cover Flow** for playlists, confetti when an export finishes, an opening sequence on Home, a scratchable record logo and a cursor trail.
+- **Disco mode**: the switch, or ↑ ↑ ↓ ↓ ← → ← → B A.
+
 ### Insights
 
 Four pages about your taste rather than one playlist, built from your Liked Songs, your Spotify top artists and tracks, your recent plays and public music data.

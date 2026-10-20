@@ -9,6 +9,9 @@ import ThemeSwitch from './components/ThemeSwitch.vue';
 import MotionSwitch from './components/MotionSwitch.vue';
 import PlayerDock from './components/PlayerDock.vue';
 import ShaderBackdrop from './components/ShaderBackdrop.vue';
+import RecordLogo from './components/RecordLogo.vue';
+import DiscoBall from './components/DiscoBall.vue';
+import DiscoSwitch from './components/DiscoSwitch.vue';
 import { INSIGHT_TABS } from './nav.js';
 
 const router = useRouter();
@@ -94,7 +97,7 @@ const shell = computed(() => loading.value || me.value);
     <!-- Desktop: side rail -->
     <aside v-if="shell" class="rail" aria-label="App">
       <router-link to="/" class="brand">
-        <span class="mark" aria-hidden="true"></span>
+        <RecordLogo />
         <span class="brand-text">Playlist Parser</span>
       </router-link>
       <nav v-if="me" class="rail-nav" aria-label="Main">
@@ -121,6 +124,7 @@ const shell = computed(() => loading.value || me.value);
           <span class="user-name" :title="me.displayName || me.spotifyId">{{ me.displayName || me.spotifyId }}</span>
           <ThemeSwitch />
           <MotionSwitch />
+          <DiscoSwitch />
         </div>
         <button class="btn btn-ghost btn-sm logout" @click="logout"><Icon name="logout" :size="16" /> Log out</button>
       </div>
@@ -129,7 +133,7 @@ const shell = computed(() => loading.value || me.value);
     <!-- Phone: top bar with a menu -->
     <header v-if="shell" class="topbar">
       <router-link to="/" class="brand">
-        <span class="mark" aria-hidden="true"></span>
+        <RecordLogo />
         <span class="brand-text">Playlist Parser</span>
       </router-link>
       <details v-if="me" ref="menu" class="menu">
@@ -141,6 +145,7 @@ const shell = computed(() => loading.value || me.value);
           <StatusPanel />
           <div class="menu-row"><span class="muted small">Theme</span><ThemeSwitch /></div>
           <MotionSwitch />
+          <DiscoSwitch />
           <button class="btn btn-secondary btn-sm" @click="logout"><Icon name="logout" :size="16" /> Log out</button>
         </div>
       </details>
@@ -157,6 +162,7 @@ const shell = computed(() => loading.value || me.value);
     </main>
 
     <PlayerDock v-if="me" />
+    <DiscoBall />
 
     <!-- Phone: bottom tabs -->
     <nav v-if="me" class="tabbar" aria-label="Main">

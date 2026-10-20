@@ -6,6 +6,7 @@ import { loadPlaylists, plural } from '../playlistCache.js';
 import { exportJob, startExportAll } from '../status.js';
 import Icon from '../components/Icon.vue';
 import LikedCover from '../components/LikedCover.vue';
+import CoverFlow from '../components/CoverFlow.vue';
 import { heroName } from '../transitions.js';
 
 const props = defineProps({ me: Object, meLoading: Boolean });
@@ -22,12 +23,14 @@ const error = ref(null);
 const query = ref(String(route.query.q || ''));
 const filter = ref(['mine', 'collab'].includes(route.query.filter) ? route.query.filter : 'all');
 const sort = ref(['name', 'tracks'].includes(route.query.sort) ? route.query.sort : 'spotify');
-watch([query, filter, sort], () => {
+const view = ref(route.query.view === 'flow' ? 'flow' : 'grid');
+watch([query, filter, sort, view], () => {
   router.replace({
     query: {
       ...(query.value ? { q: query.value } : {}),
       ...(filter.value !== 'all' ? { filter: filter.value } : {}),
       ...(sort.value !== 'spotify' ? { sort: sort.value } : {}),
+      ...(view.value === 'flow' ? { view: 'flow' } : {}),
     },
   });
 });
@@ -84,6 +87,17 @@ const filters = computed(() => [
   { key: 'collab', label: 'Collaborative' },
 ].filter((f) => f.key === 'all' || (counts.value[f.key] > 0 && counts.value[f.key] < counts.value.all) || filter.value === f.key));
 
+// Cover Flow shows the same (filtered, sorted) playlists as the grid.
+const flowItems = computed(() => [
+  ...(showLiked.value && liked.value?.analyzable
+    ? [{ id: 'liked', name: 'Liked Songs', sub: plural(liked.value.tracks_total ?? 0, 'track'), image: null, liked: true, to: '/playlist/liked' }]
+    : []),
+  ...visible.value.filter((p) => p.tracks_total !== 0).map((p) => ({
+    id: p.id, name: p.name, image: p.image, to: `/playlist/${p.id}`,
+    sub: `${plural(p.tracks_total ?? 0, 'track')}${p.owner.id !== props.me?.spotifyId ? ` · ${p.owner.display_name}` : ''}`,
+  })),
+]);
+
 const exporting = computed(() => exportJob.value && !['completed', 'error'].includes(exportJob.value.status));
 </script>
 
@@ -117,6 +131,10 @@ const exporting = computed(() => exportJob.value && !['completed', 'error'].incl
           {{ f.label }} <span class="seg-count">{{ counts[f.key] }}</span>
         </button>
       </div>
+      <div class="seg" role="group" aria-label="View">
+        <button :aria-pressed="view === 'grid'" @click="view = 'grid'">Grid</button>
+        <button :aria-pressed="view === 'flow'" @click="view = 'flow'">Cover Flow</button>
+      </div>
       <label class="sort">
         <span>Sort</span>
         <select v-model="sort">
@@ -132,7 +150,8 @@ const exporting = computed(() => exportJob.value && !['completed', 'error'].incl
     </div>
 
     <template v-else>
-      <ul v-if="visible.length || showLiked" v-reveal="'cascade'" class="grid" role="list">
+      <CoverFlow v-if="view === 'flow' && flowItems.length" :items="flowItems" />
+      <ul v-else-if="visible.length || showLiked" v-reveal="'cascade'" class="grid" role="list">
         <li v-if="showLiked">
           <router-link v-if="liked.analyzable" to="/playlist/liked" class="card card-link">
             <LikedCover class="cover" :size="0" :style="heroName('/playlist/liked')" />

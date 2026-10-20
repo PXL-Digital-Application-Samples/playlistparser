@@ -12,6 +12,7 @@ import { burstFrom } from '../confetti.js';
 import { INSIGHT_TABS } from '../nav.js';
 import Icon from '../components/Icon.vue';
 import StoryCards from '../components/StoryCards.vue';
+import CursorTrail from '../components/CursorTrail.vue';
 import { heroName } from '../transitions.js';
 
 const props = defineProps({ me: Object, meLoading: Boolean });
@@ -59,6 +60,7 @@ const EXPLORE = {
 
 <template>
   <div ref="root" class="page">
+    <CursorTrail />
     <header class="dash-head">
       <p class="eyebrow">Your library</p>
       <h1 class="greeting" title="Click me" @click="burstFrom($event.currentTarget, { count: 120 })">{{ firstName ? `Hi, ${firstName}.` : 'Your library' }}</h1>
