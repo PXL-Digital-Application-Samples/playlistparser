@@ -3,9 +3,12 @@ import { ref, computed, watch, onBeforeUnmount, nextTick } from 'vue';
 import { endpoints, describeError, spotifyUrl } from '../api.js';
 import { sanitizeDescription } from '../sanitize.js';
 import { cachedPlaylist, plural } from '../playlistCache.js';
+import { lens } from '../settings.js';
+import { setTitle } from '../title.js';
 import Icon from '../components/Icon.vue';
 import LikedCover from '../components/LikedCover.vue';
 import BarList from '../components/BarList.vue';
+import LensToggle from '../components/LensToggle.vue';
 
 // `id` comes from the route (router uses `props: true`).
 const props = defineProps({ me: Object, meLoading: Boolean, id: String });
@@ -15,23 +18,23 @@ const stats = ref(null);
 const dedupe = ref(null);
 const listeners = ref(null);
 const loading = ref(false);
-// Liked Songs only: count hand-picked songs, or include whole-album saves.
-const lens = ref('handpicked');
+const error = ref(null);
+let listenersTimer = null;
+
+// Liked Songs only: the shared "count songs from saved albums" setting.
 const isLiked = computed(() => props.id === 'liked');
-async function setLens(next) {
-  if (lens.value === next) return;
-  lens.value = next;
+watch(lens, async (next) => {
+  if (!isLiked.value || !stats.value) return;
   try {
     stats.value = { ...(await endpoints.playlistStats(props.id, next)) };
   } catch (e) {
     error.value = describeError(e);
   }
-}
-const error = ref(null);
-let listenersTimer = null;
+});
 
 const preview = computed(() => cachedPlaylist(props.id));
 const info = computed(() => stats.value?.playlist ?? preview.value);
+watch(() => info.value?.name, (name) => setTitle(name || 'Playlist'), { immediate: true });
 
 // ---- Formatting ------------------------------------------------------------
 const fmtNumber = (n) => (typeof n === 'number' ? n.toLocaleString() : '—');
@@ -46,6 +49,10 @@ const fmtDuration = (ms) => {
 const artistNames = (t) => t.artists.map((a) => a.name).join(', ');
 const year = (t) => t.album?.release_date?.slice(0, 4) || '';
 const yearOf = (d) => d?.slice(0, 4) || '—';
+
+// The header count doesn't depend on the setting: Liked Songs always shows
+// every song, the setting only changes the statistics below it.
+const songCount = computed(() => (isLiked.value ? stats.value?.lens_counts?.all : stats.value?.tracks_total));
 
 const ALBUM_TYPE_LABELS = { album: 'album', single: 'single', compilation: 'compilation' };
 const albumTypes = computed(() =>
@@ -62,7 +69,6 @@ const addedSummary = computed(() => {
   if (a.by_year.length === 1) return `All tracks were added in ${a.by_year[0].year}.`;
   return null;
 });
-
 
 // ---- Last.fm ---------------------------------------------------------------
 const listenersById = computed(() => new Map(Object.entries(listeners.value?.by_track || {})));
@@ -106,17 +112,18 @@ const duplicateList = computed(() => {
   return [...duplicates.value.entries()].map(([pos, d]) => ({ ...d, track: tracks[pos], firstTrack: tracks[d.first] }));
 });
 
-// ---- Track table sorting ---------------------------------------------------
+// ---- Track table: filter, sort, render in chunks --------------------------
+const filter = ref('');
 const sortKey = ref('position');
 const sortDir = ref(1);
 const COLUMNS = computed(() => [
-  { key: 'position', label: '#', num: true },
-  { key: 'name', label: 'Title' },
-  { key: 'artist', label: 'Artist' },
-  { key: 'album', label: 'Album', wide: true },
-  { key: 'year', label: 'Year', num: true, wide: true },
-  { key: 'duration', label: 'Length', num: true },
-  ...(lastfmOn.value ? [{ key: 'listeners', label: 'Listeners', num: true, lastfm: true }] : []),
+  { key: 'position', label: '#', num: true, cls: 'col-pos' },
+  { key: 'name', label: 'Title', cls: 'col-title' },
+  { key: 'artist', label: 'Artist', cls: 'col-artist' },
+  { key: 'album', label: 'Album', cls: 'col-album wide' },
+  { key: 'year', label: 'Year', num: true, cls: 'col-year wide' },
+  { key: 'duration', label: 'Length', num: true, cls: 'col-len' },
+  ...(lastfmOn.value ? [{ key: 'listeners', label: 'Listeners', num: true, cls: 'col-lis wide' }] : []),
 ]);
 const sortValue = {
   position: (t) => t.position,
@@ -127,19 +134,37 @@ const sortValue = {
   duration: (t) => t.duration_ms ?? -1,
   listeners: (t) => listenersById.value.get(t.id)?.listeners ?? -1,
 };
-const sortedTracks = computed(() => {
+const filteredTracks = computed(() => {
   const tracks = contents.value?.tracks || [];
+  const q = filter.value.trim().toLowerCase();
+  if (!q) return tracks;
+  return tracks.filter((t) => `${t.name ?? ''} ${artistNames(t)} ${t.album?.name ?? ''}`.toLowerCase().includes(q));
+});
+const sortedTracks = computed(() => {
   const get = sortValue[sortKey.value];
-  return [...tracks].sort((a, b) => {
+  return [...filteredTracks.value].sort((a, b) => {
     const x = get(a), y = get(b);
     return (x < y ? -1 : x > y ? 1 : a.position - b.position) * sortDir.value;
   });
 });
-// Render big tables (Liked Songs can be thousands of tracks) in chunks.
-const ROW_CHUNK = 250;
+// Big tables (Liked Songs can be thousands of tracks) render in chunks; the
+// next chunk loads when the end of the table scrolls into view.
+const ROW_CHUNK = 200;
 const rowLimit = ref(ROW_CHUNK);
 const visibleTracks = computed(() => sortedTracks.value.slice(0, rowLimit.value));
 const hiddenRows = computed(() => sortedTracks.value.length - visibleTracks.value.length);
+watch(filter, () => (rowLimit.value = ROW_CHUNK));
+
+const sentinel = ref(null);
+let observer = null;
+watch(sentinel, (el) => {
+  observer?.disconnect();
+  if (!el || typeof IntersectionObserver === 'undefined') return;
+  observer = new IntersectionObserver((entries) => {
+    if (entries.some((e) => e.isIntersecting) && hiddenRows.value > 0) rowLimit.value += ROW_CHUNK;
+  }, { rootMargin: '600px 0px' });
+  observer.observe(el);
+});
 
 function sortBy(key) {
   if (sortKey.value === key) sortDir.value = -sortDir.value;
@@ -153,6 +178,7 @@ const ariaSort = (key) => (sortKey.value !== key ? 'none' : sortDir.value === 1 
 
 const highlighted = ref(null);
 async function showTrack(position) {
+  filter.value = '';
   sortKey.value = 'position';
   sortDir.value = 1;
   rowLimit.value = Math.max(rowLimit.value, position + 50);
@@ -162,23 +188,38 @@ async function showTrack(position) {
   setTimeout(() => { if (highlighted.value === position) highlighted.value = null; }, 2500);
 }
 
-// ---- Sections / in-page nav ------------------------------------------------
+// ---- Sections / in-page nav with the current section highlighted -----------
 const sections = computed(() => [
   { id: 'overview', label: 'Overview' },
   { id: 'artists', label: 'Artists & albums' },
   { id: 'timeline', label: 'Timeline' },
-  ...(lastfmOn.value || lastfmWarning.value ? [{ id: 'popularity', label: 'Popularity', lastfm: true }] : []),
+  ...(lastfmOn.value || lastfmWarning.value ? [{ id: 'popularity', label: 'Popularity' }] : []),
   { id: 'duplicates', label: 'Duplicates' },
   { id: 'tracks', label: 'Tracks' },
 ]);
+const current = ref('overview');
+let spy = null;
 function jumpTo(id) {
   document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+function watchSections() {
+  spy?.disconnect();
+  if (typeof IntersectionObserver === 'undefined') return;
+  spy = new IntersectionObserver((entries) => {
+    const visible = entries.filter((e) => e.isIntersecting).sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top);
+    if (visible[0]) current.value = visible[0].target.id;
+  }, { rootMargin: '-120px 0px -60% 0px' });
+  for (const s of sections.value) {
+    const el = document.getElementById(s.id);
+    if (el) spy.observe(el);
+  }
 }
 
 // ---- Loading ---------------------------------------------------------------
 async function loadAll() {
   clearTimeout(listenersTimer);
   contents.value = stats.value = dedupe.value = listeners.value = null;
+  filter.value = '';
   sortKey.value = 'position';
   sortDir.value = 1;
   rowLimit.value = ROW_CHUNK;
@@ -200,6 +241,8 @@ async function loadAll() {
   } finally {
     loading.value = false;
   }
+  await nextTick();
+  watchSections();
 }
 
 // Last.fm lookups run in the background on the API; poll until complete.
@@ -215,7 +258,12 @@ async function pollListeners(id) {
 }
 
 watch(() => [props.me, props.id], loadAll, { immediate: true });
-onBeforeUnmount(() => clearTimeout(listenersTimer));
+watch(() => sections.value.length, () => nextTick(watchSections));
+onBeforeUnmount(() => {
+  clearTimeout(listenersTimer);
+  observer?.disconnect();
+  spy?.disconnect();
+});
 
 function exportToCsv() {
   const link = document.createElement('a');
@@ -241,7 +289,8 @@ function exportToCsv() {
         <p class="pl-meta">
           <template v-if="info?.owner?.display_name">by {{ info.owner.display_name }}</template>
           <span v-if="info?.collaborative" class="badge"><Icon name="users" :size="12" /> Collaborative</span>
-          <template v-if="stats"> · {{ plural(stats.tracks_total, 'track') }} · {{ fmtDuration(stats.duration.total_ms) }}</template>
+          <template v-if="stats"> · {{ plural(songCount ?? 0, 'track') }}</template>
+          <template v-if="stats && !isLiked"> · {{ fmtDuration(stats.duration.total_ms) }}</template>
         </p>
         <p v-if="stats?.playlist?.description" class="pl-desc" v-html="sanitizeDescription(stats.playlist.description)"></p>
         <div class="pl-actions">
@@ -257,20 +306,13 @@ function exportToCsv() {
 
     <div v-if="error" class="alert alert-error" role="alert">{{ error }}</div>
 
-    <div v-if="isLiked && stats?.lens_counts" class="lens-row">
-      <div class="lens" role="group" aria-label="What counts as a like">
-        <button :aria-pressed="lens === 'handpicked'" @click="setLens('handpicked')">
-          Hand-picked <span>{{ stats.lens_counts.handpicked.toLocaleString() }}</span>
-        </button>
-        <button :aria-pressed="lens === 'all'" @click="setLens('all')">
-          Incl. album saves <span>{{ stats.lens_counts.all.toLocaleString() }}</span>
-        </button>
-      </div>
-      <p class="muted small">
-        {{ stats.lens_counts.album_saves }} whole albums were saved in one go (5+ songs within a minute).
-        {{ lens === 'handpicked' ? 'Stats below leave them out.' : 'Each counts once for top artists.' }}
-      </p>
-    </div>
+    <LensToggle
+      v-if="isLiked && stats?.lens_counts"
+      class="lens-row"
+      :handpicked="stats.lens_counts.handpicked"
+      :all="stats.lens_counts.all"
+      :saves="stats.lens_counts.album_saves"
+    />
 
     <!-- Loading skeleton -->
     <div v-if="loading" aria-busy="true">
@@ -287,8 +329,9 @@ function exportToCsv() {
           v-for="s in sections"
           :key="s.id"
           :href="`#${s.id}`"
+          :aria-current="current === s.id ? 'location' : null"
           @click.prevent="jumpTo(s.id)"
-        >{{ s.label }}<span v-if="s.lastfm" class="src-lastfm nav-src">Last.fm</span></a>
+        >{{ s.label }}</a>
       </nav>
 
       <!-- Overview -->
@@ -321,7 +364,7 @@ function exportToCsv() {
           <div class="card">
             <span class="card-label">Duplicates</span>
             <strong>{{ duplicates.size }}</strong>
-            <a href="#duplicates" class="card-sub" @click.prevent="jumpTo('duplicates')">view</a>
+            <a v-if="duplicates.size" href="#duplicates" class="card-sub" @click.prevent="jumpTo('duplicates')">Show them</a>
           </div>
         </div>
       </section>
@@ -354,7 +397,6 @@ function exportToCsv() {
           <div v-if="stats.decades.length">
             <h3>Release decades</h3>
             <BarList :rows="stats.decades.map((d) => ({ label: d.decade, value: d.count }))" unit="songs" />
-            <p class="muted small">Oldest {{ stats.release_range.oldest || '—' }}, newest {{ stats.release_range.newest || '—' }}.</p>
           </div>
           <div>
             <h3>When tracks were added</h3>
@@ -383,30 +425,30 @@ function exportToCsv() {
       </section>
 
       <!-- Popularity (Last.fm) -->
-      <section v-if="lastfmOn || lastfmWarning" id="popularity" class="section lastfm-section" aria-labelledby="h-popularity">
-        <h2 id="h-popularity">Popularity <span class="src-lastfm">Last.fm</span></h2>
+      <section v-if="lastfmOn || lastfmWarning" id="popularity" class="section" aria-labelledby="h-popularity">
+        <h2 id="h-popularity">Popularity</h2>
         <div v-if="lastfmWarning" class="alert alert-warn" role="status">{{ lastfmWarning }}</div>
         <template v-else>
-          <p class="lastfm-explain">
-            Global listener counts from <a href="https://www.last.fm" target="_blank" rel="noopener noreferrer">Last.fm</a>:
-            how many Last.fm users ever played each track. These are not Spotify plays; Spotify no longer shares popularity.
+          <p class="explain">
+            How many <a href="https://www.last.fm" target="_blank" rel="noopener noreferrer">Last.fm</a> users ever played each track.
+            These are not Spotify plays; Spotify no longer shares popularity.
           </p>
 
-          <div v-if="!listeners.complete" class="lastfm-progress" role="status" aria-live="polite">
+          <div v-if="!listeners.complete" class="progress" role="status" aria-live="polite">
             <span class="progress-track"><span class="progress-fill" :style="{ width: `${lastfmProgress}%` }"></span></span>
             <span>Looking up tracks on Last.fm… {{ listeners.looked_up }} of {{ listeners.eligible }}</span>
           </div>
 
           <div class="cards">
-            <div class="card card-lastfm">
+            <div class="card">
               <span class="card-label">Avg listeners per track</span>
               <strong>{{ fmtNumber(listeners.avg_listeners) }}</strong>
             </div>
-            <div class="card card-lastfm">
+            <div class="card">
               <span class="card-label">Median listeners</span>
               <strong>{{ fmtNumber(listeners.median_listeners) }}</strong>
             </div>
-            <div class="card card-lastfm">
+            <div class="card">
               <span class="card-label">Found on Last.fm</span>
               <strong>{{ listeners.matched }} of {{ listeners.eligible }}</strong>
             </div>
@@ -432,6 +474,7 @@ function exportToCsv() {
               </ol>
             </div>
           </div>
+          <p class="source">Source: Last.fm</p>
         </template>
       </section>
 
@@ -461,8 +504,18 @@ function exportToCsv() {
 
       <!-- Tracks -->
       <section id="tracks" class="section" aria-labelledby="h-tracks">
-        <h2 id="h-tracks">Tracks</h2>
-        <div class="table-wrap" tabindex="0" aria-label="Tracks table, scrollable">
+        <div class="tracks-head">
+          <h2 id="h-tracks">Tracks</h2>
+          <label class="filter">
+            <Icon name="search" :size="16" />
+            <span class="visually-hidden">Filter tracks</span>
+            <input v-model="filter" type="search" placeholder="Filter by title, artist or album" />
+          </label>
+          <span class="muted small" aria-live="polite">
+            <template v-if="filter">{{ plural(filteredTracks.length, 'match') }}</template>
+          </span>
+        </div>
+        <div class="table-wrap">
           <table class="tracks">
             <thead>
               <tr>
@@ -470,12 +523,11 @@ function exportToCsv() {
                   v-for="c in COLUMNS"
                   :key="c.key"
                   :aria-sort="ariaSort(c.key)"
-                  :class="{ num: c.num, wide: c.wide, 'col-lastfm': c.lastfm }"
+                  :class="[c.cls, { num: c.num }]"
                   scope="col"
                 >
                   <button class="th-btn" @click="sortBy(c.key)">
                     {{ c.label }}
-                    <span v-if="c.lastfm" class="src-lastfm">Last.fm</span>
                     <span class="sort-ind" aria-hidden="true">{{ sortKey === c.key ? (sortDir === 1 ? '▲' : '▼') : '' }}</span>
                   </button>
                 </th>
@@ -488,35 +540,42 @@ function exportToCsv() {
                 :id="`track-${t.position}`"
                 :class="{ dup: duplicates.has(t.position), flash: highlighted === t.position }"
               >
-                <td class="num">{{ t.position + 1 }}</td>
-                <td>
-                  <a v-if="t.id" :href="spotifyUrl('track', t.id)" target="_blank" rel="noopener noreferrer" class="sp-link">{{ t.name }}</a>
-                  <template v-else>{{ t.name || '—' }}</template>
-                  <span v-if="t.explicit" class="explicit" title="Explicit" aria-label="Explicit">E</span>
-                  <span v-if="t.is_local" class="muted small">(local file)</span>
-                  <span v-if="t.album_save" class="save-tag" title="Added when the whole album was saved">album save</span>
-                  <span
-                    v-if="duplicates.has(t.position)"
-                    class="dup-tag"
-                  >{{ duplicates.get(t.position).kind === 'exact' ? 'duplicate' : 'same recording' }} of #{{ duplicates.get(t.position).first + 1 }}</span>
+                <td class="num col-pos">{{ t.position + 1 }}</td>
+                <td class="col-title">
+                  <div class="title-cell">
+                    <img v-if="t.album?.image" :src="t.album.image" alt="" class="row-cover" loading="lazy" decoding="async" />
+                    <span v-else class="row-cover"></span>
+                    <span class="title-text">
+                      <span class="clip" :title="t.name">
+                        <a v-if="t.id" :href="spotifyUrl('track', t.id)" target="_blank" rel="noopener noreferrer" class="sp-link">{{ t.name }}</a>
+                        <template v-else>{{ t.name || '—' }}</template>
+                      </span>
+                      <span class="row-tags">
+                        <span v-if="t.explicit" class="explicit" title="Explicit" aria-label="Explicit">E</span>
+                        <span v-if="t.is_local" class="tag">local file</span>
+                        <span v-if="t.album_save" class="tag" title="Added when the whole album was saved">album save</span>
+                        <span v-if="duplicates.has(t.position)" class="tag tag-dup">{{ duplicates.get(t.position).kind === 'exact' ? 'duplicate' : 'same recording' }} of #{{ duplicates.get(t.position).first + 1 }}</span>
+                      </span>
+                    </span>
+                  </div>
                 </td>
-                <td>{{ artistNames(t) || '—' }}</td>
-                <td class="wide">{{ t.album?.name || '—' }}</td>
-                <td class="num wide">{{ year(t) || '—' }}</td>
-                <td class="num">{{ fmtDuration(t.duration_ms) }}</td>
-                <td v-if="lastfmOn" class="num col-lastfm">{{ fmtNumber(listenersById.get(t.id)?.listeners) }}</td>
+                <td class="col-artist"><span class="clip" :title="artistNames(t)">{{ artistNames(t) || '—' }}</span></td>
+                <td class="col-album wide"><span class="clip" :title="t.album?.name">{{ t.album?.name || '—' }}</span></td>
+                <td class="num col-year wide">{{ year(t) || '—' }}</td>
+                <td class="num col-len">{{ fmtDuration(t.duration_ms) }}</td>
+                <td v-if="lastfmOn" class="num col-lis wide">{{ fmtNumber(listenersById.get(t.id)?.listeners) }}</td>
               </tr>
             </tbody>
           </table>
-          <div v-if="hiddenRows > 0" class="more-rows">
+          <p v-if="filter && !filteredTracks.length" class="empty-filter muted">No tracks match "{{ filter }}".</p>
+          <div v-if="hiddenRows > 0" ref="sentinel" class="more-rows">
             <span class="muted small">Showing {{ visibleTracks.length.toLocaleString() }} of {{ sortedTracks.length.toLocaleString() }}</span>
-            <button class="btn btn-secondary btn-sm" @click="rowLimit += ROW_CHUNK">Show {{ Math.min(ROW_CHUNK, hiddenRows) }} more</button>
-            <button class="btn btn-link btn-sm" @click="rowLimit = sortedTracks.length">Show all</button>
+            <button class="btn btn-secondary btn-sm" @click="rowLimit = sortedTracks.length">Show all</button>
           </div>
         </div>
         <p class="muted small">
-          Click a column header to sort (sorting covers all tracks, not only the visible ones).
-          <template v-if="lastfmOn">Listener counts come from Last.fm; everything else from Spotify. "—" means the track isn't on Last.fm or is still being looked up.</template>
+          Click a column header to sort; sorting and filtering cover all tracks, not only the visible ones.
+          <template v-if="lastfmOn">Listener counts come from Last.fm; "—" means the track isn't on Last.fm or is still being looked up.</template>
         </p>
       </section>
     </template>
@@ -526,7 +585,6 @@ function exportToCsv() {
 <style scoped>
 .back { margin-bottom: 12px; }
 .small { font-size: 13px; }
-.truncate { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 /* Header */
 .pl-head {
@@ -552,11 +610,12 @@ function exportToCsv() {
 .pl-desc { color: var(--muted); font-size: 14px; margin: 8px 0 0; }
 .pl-desc :deep(a) { color: var(--link); }
 .pl-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 14px; }
+.lens-row { margin: 0 0 12px; }
 
 /* Section nav */
 .section-nav {
   position: sticky;
-  top: 53px;
+  top: var(--header-h, 53px);
   z-index: 10;
   display: flex;
   gap: 4px;
@@ -570,8 +629,8 @@ function exportToCsv() {
 .section-nav a {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
   padding: 6px 12px;
+  min-height: 32px;
   border-radius: 999px;
   color: var(--text);
   text-decoration: none;
@@ -579,16 +638,16 @@ function exportToCsv() {
   white-space: nowrap;
 }
 .section-nav a:hover { background: var(--surface-muted); }
-.nav-src { font-size: 10px; }
+.section-nav a[aria-current] { background: var(--accent-soft); color: var(--accent-strong); font-weight: 600; }
 
-.section { padding-top: 20px; scroll-margin-top: 110px; }
+.section { padding-top: 20px; scroll-margin-top: calc(var(--header-h, 53px) + 56px); }
 .section h2 { font-size: 1.3rem; margin: 0 0 12px; display: flex; align-items: center; gap: 8px; }
 .section h3 { font-size: 1rem; margin: 16px 0 8px; }
 
 /* Cards */
 .cards {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
   gap: 10px;
 }
 .card {
@@ -619,42 +678,47 @@ a.card-sub { color: var(--link); }
 .count { float: right; color: var(--muted); font-variant-numeric: tabular-nums; padding-left: 8px; }
 .dup-list { list-style: none; padding: 0; }
 
-/* Last.fm */
-.lastfm-section {
-  margin-top: 20px;
-  padding: 16px 20px;
-  border: 1px solid #f1c4c1;
-  border-left: 4px solid var(--lastfm);
-  border-radius: var(--radius);
-  background: #fffafa;
-}
-.lastfm-explain { margin: 0 0 12px; color: var(--muted); font-size: 14px; }
-.lastfm-explain a { color: #b00d06; }
-.lastfm-progress { display: flex; align-items: center; gap: 12px; font-size: 13px; color: var(--muted); margin-bottom: 12px; }
-.progress-track { flex: 0 0 160px; height: 6px; background: #f1c4c1; border-radius: 3px; overflow: hidden; }
-.progress-fill { display: block; height: 100%; background: var(--lastfm); transition: width 0.3s ease; }
-.card-lastfm { border-color: #f1c4c1; }
+/* Popularity */
+.explain { margin: 0 0 12px; color: var(--muted); font-size: 14px; max-width: 70ch; }
+.progress { display: flex; align-items: center; gap: 12px; font-size: 13px; color: var(--muted); margin-bottom: 12px; }
+.progress-track { flex: 0 0 160px; height: 6px; background: var(--surface-muted); border-radius: 3px; overflow: hidden; }
+.progress-fill { display: block; height: 100%; background: var(--accent); transition: width 0.3s ease; }
+.source { margin: 10px 0 0; font-size: 12px; color: var(--muted); }
 
-/* Table */
+/* Track table: scrolls with the page; the header sticks under the section nav. */
+.tracks-head { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; margin-bottom: 12px; }
+.tracks-head h2 { margin: 0; }
+.filter {
+  display: flex; align-items: center; gap: 8px; flex: 0 1 320px;
+  background: var(--surface); border: 1px solid var(--border); border-radius: 999px;
+  padding: 0 12px; color: var(--muted);
+}
+.filter:focus-within { outline: 3px solid var(--focus); outline-offset: 1px; }
+.filter input { flex: 1; border: none; outline: none; background: transparent; font: inherit; font-size: 14px; padding: 8px 0; color: var(--text); min-width: 0; }
 .table-wrap {
-  max-height: 70vh;
-  overflow: auto;
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius);
+  overflow: clip;
 }
-.tracks { width: 100%; border-collapse: collapse; font-size: 14px; }
+.tracks { width: 100%; border-collapse: collapse; font-size: 14px; table-layout: fixed; }
 .tracks th {
   position: sticky;
-  top: 0;
+  top: calc(var(--header-h, 53px) + 49px);
   z-index: 1;
   background: var(--surface);
   border-bottom: 1px solid var(--border);
   text-align: left;
   padding: 0;
 }
-.tracks td { padding: 7px 10px; border-bottom: 1px solid var(--surface-muted); vertical-align: top; }
+.tracks td { padding: 6px 10px; border-bottom: 1px solid var(--surface-muted); vertical-align: middle; }
 .tracks .num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.col-pos { width: 52px; }
+.col-title { width: 36%; }
+.col-artist { width: 22%; }
+.col-year { width: 64px; }
+.col-len { width: 72px; }
+.col-lis { width: 104px; }
 .th-btn {
   width: 100%;
   display: flex;
@@ -664,7 +728,8 @@ a.card-sub { color: var(--link); }
   font-weight: 600;
   background: none;
   border: none;
-  padding: 9px 10px;
+  padding: 10px;
+  min-height: 40px;
   cursor: pointer;
   color: var(--text);
   text-align: inherit;
@@ -672,42 +737,31 @@ a.card-sub { color: var(--link); }
 }
 th.num .th-btn { justify-content: flex-end; }
 .sort-ind { font-size: 10px; color: var(--muted); min-width: 10px; }
-.tracks th.col-lastfm, .tracks td.col-lastfm { background: #fff5f5; }
-.tracks tr.dup td { background: #fff8e5; }
-.tracks tr.flash td { background: #fde68a; transition: background 0.3s; }
-.lens-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; margin: 0 0 12px; }
-.lens-row p { margin: 0; }
-.lens { display: inline-flex; background: var(--surface-muted); border-radius: 999px; padding: 3px; }
-.lens button {
-  font: inherit; font-size: 13px; font-weight: 600; border: none; background: none; color: var(--text);
-  padding: 6px 14px; border-radius: 999px; cursor: pointer; white-space: nowrap;
+.title-cell { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.row-cover { width: 32px; height: 32px; border-radius: 4px; object-fit: cover; flex: none; background: var(--surface-muted); }
+.title-text { display: flex; flex-direction: column; min-width: 0; }
+.clip { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.row-tags { display: flex; flex-wrap: wrap; gap: 4px; }
+.row-tags:empty { display: none; }
+.tracks tr.dup td { background: var(--warn-bg); }
+.tracks tr.flash td { background: var(--highlight); transition: background 0.3s; }
+.tag {
+  display: inline-block; font-size: 11px; line-height: 1.5; color: var(--muted);
+  background: var(--surface-muted); border-radius: 4px; padding: 0 5px;
 }
-.lens button span { font-weight: 400; color: var(--muted); margin-left: 4px; }
-.lens button[aria-pressed='true'] { background: var(--surface); box-shadow: var(--shadow); }
-.save-tag {
-  display: inline-block; font-size: 11px; color: #3c2a8a; background: #e9e4fb;
-  border-radius: 4px; padding: 0 5px; margin-left: 4px;
-}
-.dup-tag {
-  display: inline-block;
-  font-size: 11px;
-  color: #6b4e00;
-  background: #ffe9a8;
-  border-radius: 4px;
-  padding: 0 5px;
-  margin-left: 4px;
-}
+.tag-dup { color: var(--warn-text); background: var(--warn-bg); }
 .explicit {
   display: inline-block;
   font-size: 10px;
   font-weight: 700;
+  line-height: 1.6;
   background: var(--muted);
-  color: #fff;
+  color: var(--surface);
   border-radius: 3px;
   padding: 0 4px;
-  margin-left: 4px;
 }
 .link-btn { font: inherit; padding: 0; cursor: pointer; }
+.empty-filter { padding: 24px; text-align: center; margin: 0; }
 .more-rows {
   display: flex;
   align-items: center;
@@ -722,6 +776,10 @@ th.num .th-btn { justify-content: flex-end; }
   .pl-cover { width: 96px; height: 96px; }
   .pl-title h1 { font-size: 1.5rem; }
   .tracks .wide { display: none; }
-  .section-nav { top: 49px; }
+  .col-title { width: auto; }
+  .col-artist { width: 34%; }
+  .col-pos { width: 40px; }
+  .col-len { width: 56px; }
+  .row-cover { display: none; }
 }
 </style>

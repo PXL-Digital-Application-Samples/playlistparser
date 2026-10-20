@@ -75,11 +75,12 @@ const showLiked = computed(() => {
   return !q || 'liked songs'.includes(q);
 });
 
-const filters = [
+// A filter that would show the same list as "All" is left out.
+const filters = computed(() => [
   { key: 'all', label: 'All' },
   { key: 'mine', label: 'Created by me' },
   { key: 'collab', label: 'Collaborative' },
-];
+].filter((f) => f.key === 'all' || (counts.value[f.key] > 0 && counts.value[f.key] < counts.value.all) || filter.value === f.key));
 
 // ---- Export all ------------------------------------------------------------
 const exportLoading = ref(false);

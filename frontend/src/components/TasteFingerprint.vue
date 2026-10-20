@@ -83,7 +83,7 @@ const topDecade = computed(() => [...props.profile.decades].sort((a, b) => b.sha
       <path v-for="p in other" :key="'c' + p.decade" v-show="p.d" :d="p.d || ''" class="petal-compare">
         <title>{{ p.decade }}: {{ Math.round(p.share * 100) }}% of {{ compareLabel.toLowerCase() }}</title>
       </path>
-      <text v-for="p in main" :key="'l' + p.decade" :x="p.label.split(',')[0]" :y="Number(p.label.split(',')[1]) + 4" text-anchor="middle" class="dec">{{ p.decade.slice(2) }}</text>
+      <text v-for="p in main" :key="'l' + p.decade" :x="p.label.split(',')[0]" :y="Number(p.label.split(',')[1]) + 4" text-anchor="middle" class="dec">{{ p.decade }}</text>
       <circle v-for="(d, i) in dots" :key="i" :cx="d.x" :cy="d.y" r="2.4" :fill="d.on ? '#7f6bd8' : 'var(--surface-muted)'" />
       <text :x="C" :y="C + 2" text-anchor="middle" class="len">{{ fmtLen(profile.avg_length_ms) }}</text>
       <text :x="C" :y="C + 16" text-anchor="middle" class="len-sub">avg song</text>

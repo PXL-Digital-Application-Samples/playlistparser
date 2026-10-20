@@ -16,7 +16,10 @@ import SoundMap from '../components/SoundMap.vue';
 import TasteEras from '../components/TasteEras.vue';
 import MusicAtlas from '../components/MusicAtlas.vue';
 import ArtistConstellation from '../components/ArtistConstellation.vue';
-import { familyColor } from '../families.js';
+import ChartFrame from '../components/ChartFrame.vue';
+import LensToggle from '../components/LensToggle.vue';
+import { familyColor, FAMILY_ORDER } from '../families.js';
+import { lens as lensKey } from '../settings.js';
 
 const props = defineProps({ me: Object, meLoading: Boolean });
 const loginUrl = inject('loginUrl');
@@ -42,7 +45,8 @@ async function load() {
 watch(() => props.me, load, { immediate: true });
 
 // ---- Lens: hand-picked songs only, or including whole-album saves -------------
-const lensKey = ref(route.query.lens === 'all' ? 'all' : 'handpicked');
+// The setting is shared app-wide (settings.js); ?lens=… in a link still works.
+if (route.query.lens === 'all' || route.query.lens === 'handpicked') lensKey.value = route.query.lens;
 watch(lensKey, (k) => {
   router.replace({ query: k === 'all' ? { lens: 'all' } : {} });
   loadDeep();
@@ -185,6 +189,55 @@ const monthChart = computed(() => {
   };
 });
 
+// ---- Table versions of the charts (the "Show as list" view) -------------------
+const famName = (f) => f ?? 'other';
+const soundRows = computed(() => (deep.value?.sound_map.points || []).map((p) => ({
+  name: p.name, artist: p.artist, year: String(Math.floor(p.year)), bpm: Math.round(p.bpm), listeners: p.listeners, family: famName(p.family),
+  links: { name: spotifyUrl('track', p.id) },
+})));
+const eraFamilies = computed(() => [...(deep.value?.eras.families || [])].sort((a, b) => FAMILY_ORDER.indexOf(a) - FAMILY_ORDER.indexOf(b)));
+const eraColumns = computed(() => [
+  { key: 'year', label: 'Year' }, { key: 'total', label: 'Likes', num: true },
+  ...eraFamilies.value.map((f) => ({ key: f, label: `${f} %`, num: true })),
+]);
+const eraRows = computed(() => (deep.value?.eras.rows || []).map((r) => ({
+  year: String(r.year), total: r.total,
+  ...Object.fromEntries(eraFamilies.value.map((f) => [f, r.total ? Math.round((r.counts[f] / r.total) * 100) : 0])),
+})));
+const atlasRows = computed(() => (deep.value?.atlas.countries || []).map((c) => ({
+  country: c.area || c.country, count: c.count, artists: c.artists.map((a) => a.name).join(', '),
+})));
+const constellationRows = computed(() => {
+  const c = deep.value?.constellation;
+  if (!c) return [];
+  const names = new Map(c.nodes.map((n) => [n.id, n.name]));
+  const similar = new Map();
+  for (const l of c.links) {
+    for (const [a, b] of [[l.source, l.target], [l.target, l.source]]) {
+      if (!similar.has(a)) similar.set(a, []);
+      similar.get(a).push(names.get(b));
+    }
+  }
+  return c.nodes.map((n) => ({
+    name: n.name, kind: n.ghost ? 'Suggestion' : 'In your likes', count: n.ghost ? null : n.count,
+    family: n.ghost ? '—' : famName(n.family), similar: (similar.get(n.id) || []).join(', '),
+    links: { name: n.spotify_id ? spotifyUrl('artist', n.spotify_id) : `https://open.spotify.com/search/${encodeURIComponent(n.name)}` },
+  }));
+});
+const raceRows = computed(() => {
+  if (!top.value) return [];
+  const rank = (range, id) => {
+    const i = top.value[range].artists.slice(0, 10).findIndex((a) => a.id === id);
+    return i === -1 ? '—' : `#${i + 1}`;
+  };
+  const artists = new Map();
+  for (const r of ['long_term', 'medium_term', 'short_term']) for (const a of top.value[r].artists.slice(0, 10)) artists.set(a.id, a);
+  return [...artists.values()].map((a) => ({
+    name: a.name, long: rank('long_term', a.id), medium: rank('medium_term', a.id), short: rank('short_term', a.id),
+    links: { name: spotifyUrl('artist', a.id) },
+  }));
+});
+
 // ---- Lazily loaded sections ----------------------------------------------------
 // A finished sync changes the data: reload the summary and any opened section.
 async function onSynced() {
@@ -224,14 +277,12 @@ async function fetchSection(name) {
         <p class="muted">Your Liked Songs and listening. Spotify doesn't share play counts, so "likes" and rankings are the closest signals.</p>
         <SyncStatus v-if="me" class="sync-status" @synced="onSynced" />
       </div>
-      <div v-if="summary?.lenses" class="lens" role="group" aria-label="What counts as a like">
-        <button :aria-pressed="lensKey === 'handpicked'" @click="lensKey = 'handpicked'">
-          Hand-picked <span>{{ summary.lenses.handpicked.counts.songs.toLocaleString() }}</span>
-        </button>
-        <button :aria-pressed="lensKey === 'all'" @click="lensKey = 'all'">
-          Incl. album saves <span>{{ summary.lenses.all.counts.songs.toLocaleString() }}</span>
-        </button>
-      </div>
+      <LensToggle
+        v-if="summary?.lenses"
+        :handpicked="summary.lenses.handpicked.counts.songs"
+        :all="summary.lenses.all.counts.songs"
+        :saves="summary.album_saves.saves"
+      />
     </header>
 
     <div v-if="error" class="alert alert-error" role="alert">{{ error }}</div>
@@ -293,7 +344,10 @@ async function fetchSection(name) {
         <CoverGrid :items="playItems" />
         <details class="inline-more">
           <summary>How your top artists moved</summary>
-          <RankRace :top="top" />
+          <ChartFrame label="Your top artists per period" :rows="raceRows"
+            :columns="[{ key: 'name', label: 'Artist' }, { key: 'long', label: 'Past year' }, { key: 'medium', label: 'Past 6 months' }, { key: 'short', label: 'Past 4 weeks' }]">
+            <RankRace :top="top" />
+          </ChartFrame>
         </details>
       </section>
 
@@ -343,26 +397,37 @@ async function fetchSection(name) {
           <article class="panel wide">
             <h3>Sound map</h3>
             <p class="muted small">Every song with a known tempo: when it was released, how fast it is, how popular it is.</p>
-            <SoundMap v-if="deep.sound_map.points.length" :points="deep.sound_map.points" />
+            <ChartFrame v-if="deep.sound_map.points.length" label="Sound map: songs by release year and tempo" :rows="soundRows"
+              :columns="[{ key: 'name', label: 'Song' }, { key: 'artist', label: 'Artist' }, { key: 'year', label: 'Released', num: true }, { key: 'bpm', label: 'BPM', num: true }, { key: 'listeners', label: 'Last.fm listeners', num: true }, { key: 'family', label: 'Genre' }]">
+              <SoundMap :points="deep.sound_map.points" />
+            </ChartFrame>
             <p v-else class="muted">Waiting for tempo data from Deezer…</p>
             <p class="muted small">Tempo known for {{ deep.sound_map.coverage.with_bpm.toLocaleString() }} of {{ deep.sound_map.coverage.songs.toLocaleString() }} songs.</p>
           </article>
 
           <article class="panel wide">
             <h3>Taste eras</h3>
-            <TasteEras v-if="deep.eras.rows.length" :families="deep.eras.families" :rows="deep.eras.rows" />
+            <ChartFrame v-if="deep.eras.rows.length" label="Taste eras: share of likes per genre family and year" :rows="eraRows" :columns="eraColumns">
+              <TasteEras :families="deep.eras.families" :rows="deep.eras.rows" />
+            </ChartFrame>
             <p v-else class="muted">Waiting for tags from Last.fm…</p>
           </article>
 
           <article class="panel wide">
             <h3>Music atlas</h3>
-            <MusicAtlas v-if="deep.atlas.countries.length" :countries="deep.atlas.countries" :known="deep.atlas.known" :total="deep.atlas.total" />
+            <ChartFrame v-if="deep.atlas.countries.length" label="Music atlas: likes per artist country" :rows="atlasRows"
+              :columns="[{ key: 'country', label: 'Country' }, { key: 'count', label: 'Likes', num: true }, { key: 'artists', label: 'Top artists' }]">
+              <MusicAtlas :countries="deep.atlas.countries" :known="deep.atlas.known" :total="deep.atlas.total" />
+            </ChartFrame>
             <p v-else class="muted">Waiting for artist origins from MusicBrainz…</p>
           </article>
 
           <article class="panel wide">
             <h3>Artist constellation</h3>
-            <ArtistConstellation v-if="deep.constellation.nodes.length" :nodes="deep.constellation.nodes" :links="deep.constellation.links" />
+            <ChartFrame v-if="deep.constellation.nodes.length" label="Artist constellation: your artists and similar ones" :rows="constellationRows"
+              :columns="[{ key: 'name', label: 'Artist' }, { key: 'kind', label: 'Type' }, { key: 'count', label: 'Likes', num: true }, { key: 'family', label: 'Genre' }, { key: 'similar', label: 'Similar to' }]">
+              <ArtistConstellation :nodes="deep.constellation.nodes" :links="deep.constellation.links" />
+            </ChartFrame>
           </article>
         </div>
       </section>

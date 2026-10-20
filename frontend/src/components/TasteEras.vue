@@ -1,6 +1,6 @@
 <script setup>
 import { ref, computed } from 'vue';
-import { familyColor } from '../families.js';
+import { familyColor, byFamilyOrder } from '../families.js';
 
 // Streamgraph: share of each genre family per year you added songs, centred
 // so the streams swell and shrink around a middle line.
@@ -18,7 +18,8 @@ const layers = computed(() => {
   const xs = rows.map((_, i) => PAD + (i / (rows.length - 1)) * (W - 2 * PAD));
   const scale = (H - 30) / 1; // shares sum to 1 per year
   const cum = rows.map(() => 0);
-  return props.families.map((f) => {
+  // Stacked in the validated family order, so neighbouring streams stay distinguishable.
+  return [...props.families].sort(byFamilyOrder).map((f) => {
     const lower = [];
     const upper = [];
     rows.forEach((r, i) => {
@@ -64,7 +65,7 @@ const years = computed(() => props.rows.map((r, i) => ({ year: r.year, x: PAD + 
         v-for="l in layers"
         :key="l.f"
         :d="l.d"
-        :fill="familyColor(l.f)"
+        :style="{ fill: familyColor(l.f) }"
         :fill-opacity="hover && hover !== l.f ? 0.25 : 0.88"
         stroke="white"
         stroke-width="0.8"

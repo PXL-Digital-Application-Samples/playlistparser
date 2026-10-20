@@ -74,6 +74,7 @@ const short = (s) => (s.length > 16 ? `${s.slice(0, 15)}…` : s);
         :href="href(n)"
         target="_blank"
         rel="noopener noreferrer"
+        tabindex="-1"
         :opacity="dim(n.id) ? 0.2 : 1"
         @mouseenter="hover = n.id"
         @mouseleave="hover = null"
@@ -83,7 +84,7 @@ const short = (s) => (s.length > 16 ? `${s.slice(0, 15)}…` : s);
         <title>{{ n.ghost ? `${n.name}: similar to several of your artists (not in your Liked Songs)` : `${n.name}: ${n.count} likes` }}</title>
         <circle
           :cx="n.x" :cy="n.y" :r="n.r"
-          :fill="n.ghost ? 'var(--surface)' : familyColor(n.family)"
+          :style="{ fill: n.ghost ? 'var(--surface)' : familyColor(n.family) }"
           :stroke="n.ghost ? '#7f6bd8' : 'white'"
           :stroke-width="n.ghost ? 1.6 : 1.2"
           :stroke-dasharray="n.ghost ? '3 2' : null"

@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted, provide, watch } from 'vue';
+import { ref, computed, onMounted, provide, watch } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import { endpoints, describeError } from './api.js';
 import Icon from './components/Icon.vue';
@@ -10,6 +10,9 @@ const me = ref(null);
 const loading = ref(true);
 const notice = ref(null);
 const LOGIN_URL = endpoints.loginUrl();
+// The top-level section a route belongs to, so "Playlists" stays highlighted
+// on a playlist's own page.
+const section = computed(() => route.meta.section ?? route.path);
 provide('loginUrl', LOGIN_URL);
 
 const LOGIN_ERRORS = {
@@ -63,12 +66,13 @@ onMounted(() => {
 </script>
 
 <template>
+  <a href="#main" class="skip-link">Skip to content</a>
   <header class="app-header">
     <div class="brand">
       <router-link to="/" class="logo">PXL Playlist Parser</router-link>
       <nav v-if="me" class="main-nav" aria-label="Main">
-        <router-link to="/" class="nav-link" exact-active-class="active">Playlists</router-link>
-        <router-link to="/insights" class="nav-link" active-class="active">Insights</router-link>
+        <router-link to="/" class="nav-link" :class="{ active: section === '/' }" :aria-current="section === '/' ? 'page' : null">Playlists</router-link>
+        <router-link to="/insights" class="nav-link" :class="{ active: section === '/insights' }" :aria-current="section === '/insights' ? 'page' : null">Insights</router-link>
       </nav>
     </div>
     <div class="user-section">
@@ -87,7 +91,7 @@ onMounted(() => {
       <Icon name="close" :size="16" />
     </button>
   </div>
-  <main class="main-content">
+  <main id="main" class="main-content" tabindex="-1">
     <router-view :me="me" :me-loading="loading" />
   </main>
 </template>
@@ -104,6 +108,20 @@ onMounted(() => {
   --accent: #1db954;         /* Spotify green, used with dark text */
   --accent-hover: #1ed760;
   --accent-ink: #0b2a17;
+  --accent-soft: #e3f6ea;
+  --accent-strong: #0b5a2b;
+  --highlight: #fde68a;
+  --header-h: 53px;
+  /* Genre families, in the validated order of families.js. */
+  --fam-rock: #2a78d6;
+  --fam-hip-hop: #eb6834;
+  --fam-folk-country: #1baf7a;
+  --fam-jazz-soul: #eda100;
+  --fam-classical: #e87ba4;
+  --fam-world: #008300;
+  --fam-electronic: #6250d6;
+  --fam-pop: #e34948;
+  --fam-other: #9aa0a6;
   --link: #0b5cad;
   --focus: #1a73e8;
   --danger-bg: #fdecec;
@@ -134,6 +152,21 @@ a { color: var(--link); }
 }
 
 .muted { color: var(--muted); }
+
+.skip-link {
+  position: absolute;
+  left: 12px;
+  top: -100px;
+  z-index: 100;
+  padding: 10px 16px;
+  border-radius: 8px;
+  background: var(--text);
+  color: var(--surface);
+  font-weight: 600;
+  text-decoration: none;
+}
+.skip-link:focus { top: 12px; }
+.main-content:focus { outline: none; }
 
 .visually-hidden {
   position: absolute !important;
@@ -204,18 +237,6 @@ a.sp-cover:hover img { filter: brightness(1.12) saturate(1.1); }
   border-radius: 999px;
   background: #e6f0fb;
   color: #0b4f96;
-}
-
-.src-lastfm {
-  display: inline-block;
-  vertical-align: middle;
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.02em;
-  color: #fff;
-  background: var(--lastfm);
-  border-radius: 4px;
-  padding: 1px 6px;
 }
 
 .skeleton {

@@ -74,6 +74,7 @@ const short = (s) => (s.length > 21 ? `${s.slice(0, 20)}…` : s);
           :href="spotifyUrl('artist', a.id)"
           target="_blank"
           rel="noopener noreferrer"
+          tabindex="-1"
           class="artist"
           :opacity="hovered && hovered !== a.id ? 0.3 : 1"
           @mouseenter="hovered = a.id"
