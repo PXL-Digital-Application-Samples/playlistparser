@@ -9,6 +9,7 @@ import Playlists from './views/Playlists.vue';
 import Playlist from './views/Playlist.vue';
 import { setTitle } from './title.js';
 import { INSIGHT_TABS } from './nav.js';
+import { reveal } from './motion.js';
 
 // `section` = the main navigation item a page belongs to (highlighted in the
 // rail and tab bar). Pages about one thing set their own title from its name.
@@ -40,4 +41,4 @@ router.afterEach((to) => {
   const tab = INSIGHT_TABS.find((t) => t.key === to.params.tab);
   setTitle(tab ? `${tab.label} · Insights` : to.meta.title);
 });
-createApp(App).use(router).mount('#app');
+createApp(App).use(router).directive('reveal', reveal).mount('#app');

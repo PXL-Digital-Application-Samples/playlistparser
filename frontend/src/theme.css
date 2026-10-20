@@ -367,9 +367,10 @@ a.sp-cover:hover img { filter: brightness(1.12) saturate(1.1); }
   box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .skeleton { animation: none; }
-  *, *::before, *::after { transition: none !important; animation: none !important; scroll-behavior: auto !important; }
+/* Calm mode (chosen, or the system asks for reduced motion; see motion.js). */
+:root[data-motion='calm'] .skeleton { animation: none; }
+:root[data-motion='calm'] *, :root[data-motion='calm'] *::before, :root[data-motion='calm'] *::after {
+  transition: none !important; animation: none !important; scroll-behavior: auto !important;
 }
 
 @media (max-width: 640px) {

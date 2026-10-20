@@ -28,7 +28,7 @@ const pct = (x) => `${Math.round(x * 100)}%`;
 
 <template>
   <figure class="decades">
-    <div class="plot" role="img" :aria-label="`${mainLabel} by release decade; most from the ${peak?.decade} (${pct(peak?.main ?? 0)})`">
+    <div v-reveal="'columns'" class="plot" role="img" :aria-label="`${mainLabel} by release decade; most from the ${peak?.decade} (${pct(peak?.main ?? 0)})`">
       <div v-for="r in rows" :key="r.decade" class="col" :title="`${r.decade}: ${pct(r.main)}${r.compare !== null ? ` · ${compareLabel.toLowerCase()}: ${pct(r.compare)}` : ''}`">
         <span class="val" :class="{ peak: r === peak }">{{ pct(r.main) }}</span>
         <div class="track">
@@ -50,9 +50,9 @@ const pct = (x) => `${Math.round(x * 100)}%`;
 .plot { display: flex; align-items: stretch; gap: 8px; height: 190px; }
 .col { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; min-width: 0; }
 .track { position: relative; flex: 1; width: 100%; display: flex; align-items: flex-end; }
-.bar { display: block; width: 100%; border-radius: 6px 6px 2px 2px; background: var(--mark-muted); min-height: 2px; }
+.bar { display: block; width: 100%; border-radius: 6px 6px 2px 2px; background: var(--mark-muted); min-height: 2px; transition: height 0.6s cubic-bezier(0.2, 0.8, 0.2, 1); }
 .bar.peak { background: var(--mark); }
-.mark { position: absolute; left: -3px; right: -3px; height: 3px; border-radius: 2px; background: var(--text); box-shadow: 0 0 0 2px var(--surface); }
+.mark { transition: bottom 0.6s cubic-bezier(0.2, 0.8, 0.2, 1); position: absolute; left: -3px; right: -3px; height: 3px; border-radius: 2px; background: var(--text); box-shadow: 0 0 0 2px var(--surface); }
 .val { font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
 .val.peak { color: var(--text); font-weight: 700; }
 .lab { font-size: 12px; color: var(--muted); white-space: nowrap; }

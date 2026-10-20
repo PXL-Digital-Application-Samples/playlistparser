@@ -6,6 +6,7 @@ import { startStatus, stopStatus, healthCount } from './status.js';
 import Icon from './components/Icon.vue';
 import StatusPanel from './components/StatusPanel.vue';
 import ThemeSwitch from './components/ThemeSwitch.vue';
+import MotionSwitch from './components/MotionSwitch.vue';
 import { INSIGHT_TABS } from './nav.js';
 
 const router = useRouter();
@@ -116,6 +117,7 @@ const shell = computed(() => loading.value || me.value);
         <div class="account">
           <span class="user-name" :title="me.displayName || me.spotifyId">{{ me.displayName || me.spotifyId }}</span>
           <ThemeSwitch />
+          <MotionSwitch />
         </div>
         <button class="btn btn-ghost btn-sm logout" @click="logout"><Icon name="logout" :size="16" /> Log out</button>
       </div>
@@ -135,6 +137,7 @@ const shell = computed(() => loading.value || me.value);
           <p class="menu-name">{{ me.displayName || me.spotifyId }}</p>
           <StatusPanel />
           <div class="menu-row"><span class="muted small">Theme</span><ThemeSwitch /></div>
+          <MotionSwitch />
           <button class="btn btn-secondary btn-sm" @click="logout"><Icon name="logout" :size="16" /> Log out</button>
         </div>
       </details>

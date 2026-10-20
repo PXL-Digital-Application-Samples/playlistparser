@@ -131,7 +131,7 @@ const exporting = computed(() => exportJob.value && !['completed', 'error'].incl
     </div>
 
     <template v-else>
-      <ul v-if="visible.length || showLiked" class="grid" role="list">
+      <ul v-if="visible.length || showLiked" v-reveal="'cascade'" class="grid" role="list">
         <li v-if="showLiked">
           <router-link v-if="liked.analyzable" to="/playlist/liked" class="card card-link">
             <LikedCover class="cover" :size="0" />

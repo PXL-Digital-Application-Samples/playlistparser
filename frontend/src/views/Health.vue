@@ -64,7 +64,7 @@ const names = (t) => t.artists.map((a) => a.name).join(', ');
     </div>
     <div v-if="loading && !dupes" class="skeleton" style="height: 240px; border-radius: 16px" aria-busy="true"></div>
 
-    <nav v-if="dupes?.status === 'ok'" class="tiles summary" aria-label="Summary">
+    <nav v-if="dupes?.status === 'ok'" v-reveal="'count'" class="tiles summary" aria-label="Summary">
       <a href="#duplicates" class="tile tile-link">
         <span class="label">In two or more playlists</span>
         <strong :class="{ warn: dupes.total }">{{ dupes.total.toLocaleString() }}</strong>

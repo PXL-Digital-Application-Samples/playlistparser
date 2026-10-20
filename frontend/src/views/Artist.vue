@@ -127,7 +127,7 @@ watch(() => props.id, () => (songsShown.value = SONGS_STEP));
         <aside class="side">
           <section v-if="artist.likes_by_year.length > 1" class="panel" aria-labelledby="h-years">
             <div class="panel-head"><h2 id="h-years">Likes per year</h2></div>
-            <div class="years" role="img" :aria-label="`Songs by ${artist.name} liked per year`">
+            <div v-reveal="'columns'" class="years" role="img" :aria-label="`Songs by ${artist.name} liked per year`">
               <div v-for="y in artist.likes_by_year" :key="y.year" class="ycol" :title="`${y.year}: ${plural(y.count, 'song')}`">
                 <i :style="{ height: `${(y.count / Math.max(...artist.likes_by_year.map((x) => x.count))) * 100}%` }"></i>
               </div>

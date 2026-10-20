@@ -77,7 +77,7 @@ const decadeRows = computed(() => {
         <div v-if="fpMain.top_genres.length" class="chips" aria-label="Top genres">
           <span v-for="g in fpMain.top_genres" :key="g.genre" class="chip">{{ g.genre }}</span>
         </div>
-        <div class="tiles facts">
+        <div v-reveal="'count'" class="tiles facts">
           <div class="tile"><strong>{{ fmtLen(fpMain.avg_length_ms) }}</strong><span class="label">average song</span></div>
           <div class="tile"><strong>{{ fpMain.explicit_pct ?? 0 }}%</strong><span class="label">explicit</span></div>
           <div class="tile"><strong>{{ fpMain.artist_variety_pct ?? 0 }}%</strong><span class="label">artist variety</span></div>
@@ -111,7 +111,7 @@ const decadeRows = computed(() => {
       </ChartFrame>
     </section>
 
-    <section v-if="lens?.wall.length" class="panel" aria-labelledby="h-wall">
+    <section v-if="lens?.wall.length" v-reveal class="panel" aria-labelledby="h-wall">
       <div class="panel-head">
         <h2 id="h-wall">Your cover wall</h2>
         <p>Bigger cover = more {{ lensKey === 'all' ? 'likes (a whole-album save counts once)' : 'hand-picked songs' }} from that album.</p>

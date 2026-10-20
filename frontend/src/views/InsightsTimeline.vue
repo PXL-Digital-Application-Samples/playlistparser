@@ -37,7 +37,7 @@ const monthRows = computed(() => (lens.value?.over_time.months || []).map((m) =>
         <h2 id="h-eras">Your years</h2>
         <p class="muted small">The albums and artists you liked most, per year.</p>
       </div>
-      <ul class="eras" role="list">
+      <ul v-reveal="'cascade'" class="eras" role="list">
         <li v-for="e in lens.over_time.eras" :key="e.year" class="era">
           <div class="era-covers">
             <router-link v-for="c in e.covers" :key="c.image" :to="`/album/${c.id}`" class="sp-cover" :title="c.name"><img :src="c.image" :alt="c.name" loading="lazy" /></router-link>
@@ -57,7 +57,7 @@ const monthRows = computed(() => (lens.value?.over_time.months || []).map((m) =>
       </div>
       <ChartFrame label="Likes per month" :rows="monthRows"
         :columns="[{ key: 'month', label: 'Month' }, { key: 'count', label: 'Added', num: true }, { key: 'cumulative', label: 'Total so far', num: true }]">
-        <div class="chart-scroll">
+        <div v-reveal="'svgbars'" class="chart-scroll">
           <svg :viewBox="`0 0 ${monthChart.W} ${monthChart.H + 18}`" width="100%" role="img" :aria-label="`Likes per month; most in ${lens.over_time.busiest_month?.month}`">
             <line x1="0" :y1="monthChart.H" :x2="monthChart.W" :y2="monthChart.H" class="axis-line" />
             <rect v-for="b in monthChart.bars" :key="b.month" :x="b.x" :y="monthChart.H - b.h" :width="b.w" :height="b.h" rx="1" class="bar">

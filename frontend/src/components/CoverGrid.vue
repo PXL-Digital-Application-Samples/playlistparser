@@ -6,7 +6,7 @@ defineProps({
 </script>
 
 <template>
-  <ol class="grid" aria-label="Ranked by Spotify">
+  <ol v-reveal="'cascade'" class="grid" aria-label="Ranked by Spotify">
     <li v-for="(it, i) in items" :key="it.id" class="cell" :class="{ hero: i === 0 }">
       <component
         :is="it.to ? 'router-link' : 'a'"

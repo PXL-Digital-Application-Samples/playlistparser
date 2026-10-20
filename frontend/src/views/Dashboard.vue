@@ -67,7 +67,7 @@ const EXPLORE = {
       </template>
     </section>
 
-    <section v-if="totals" class="tiles totals" aria-label="Totals">
+    <section v-if="totals" v-reveal="'count'" class="tiles totals" aria-label="Totals">
       <div class="tile"><span class="label">Songs</span><strong>{{ totals.songs.toLocaleString() }}</strong><span class="sub">in all playlists and likes</span></div>
       <router-link to="/playlist/liked" class="tile tile-link"><span class="label">Liked Songs</span><strong>{{ (totals.liked ?? 0).toLocaleString() }}</strong><span class="sub">open <Icon name="chevron-right" :size="12" /></span></router-link>
       <router-link to="/playlists" class="tile tile-link"><span class="label">Playlists</span><strong>{{ totals.playlists }}</strong><span class="sub">you own or share</span></router-link>
@@ -89,7 +89,7 @@ const EXPLORE = {
           <h2 id="h-health">Library health</h2>
           <router-link to="/health" class="more">Check <Icon name="chevron-right" :size="14" /></router-link>
         </div>
-        <ul class="health-list">
+        <ul v-reveal="'count'" class="health-list">
           <li>
             <router-link to="/health#duplicates" class="health-row">
               <strong :class="{ warn: health.duplicates }">{{ health.duplicates.toLocaleString() }}</strong>
@@ -117,7 +117,7 @@ const EXPLORE = {
         <h2 id="h-recent">Recently added to</h2>
         <router-link to="/playlists" class="more">All playlists <Icon name="chevron-right" :size="14" /></router-link>
       </div>
-      <ul class="cover-row" role="list">
+      <ul v-reveal="'cascade'" class="cover-row" role="list">
         <li v-for="p in overview.recent_playlists" :key="p.id">
           <router-link :to="`/playlist/${p.id}`" class="cover-card">
             <img v-if="p.image" :src="p.image" alt="" loading="lazy" />
@@ -134,7 +134,7 @@ const EXPLORE = {
         <h2 id="h-artists">Your top artists lately</h2>
         <router-link to="/insights/listening" class="more">What you play <Icon name="chevron-right" :size="14" /></router-link>
       </div>
-      <ul class="artist-row" role="list">
+      <ul v-reveal="'cascade'" class="artist-row" role="list">
         <li v-for="(a, i) in topArtists" :key="a.id">
           <router-link :to="`/artist/${a.id}`" class="artist-card">
             <img v-if="a.image" :src="a.image" alt="" loading="lazy" />
@@ -148,7 +148,7 @@ const EXPLORE = {
 
     <section aria-labelledby="h-explore">
       <h2 id="h-explore" class="section-title">Explore your taste</h2>
-      <div class="explore">
+      <div v-reveal="'count'" class="explore">
         <router-link v-for="t in INSIGHT_TABS" :key="t.key" :to="`/insights/${t.key}`" class="explore-card">
           <strong>{{ t.label }}</strong>
           <span>{{ EXPLORE[t.key] }}</span>

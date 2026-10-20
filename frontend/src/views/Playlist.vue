@@ -340,7 +340,7 @@ function exportToCsv() {
       <!-- Overview -->
       <section id="overview" class="section" aria-labelledby="h-overview">
         <h2 id="h-overview">Overview</h2>
-        <div class="cards">
+        <div v-reveal="'count'" class="cards">
           <div class="card">
             <span class="card-label">{{ isLiked && lens === 'handpicked' ? 'Liked one by one' : 'Tracks' }}</span>
             <strong>{{ fmtNumber(stats.tracks_total) }}</strong>

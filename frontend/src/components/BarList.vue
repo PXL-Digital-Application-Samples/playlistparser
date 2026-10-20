@@ -16,7 +16,7 @@ const unitFor = (v) => (v === 1 && /[a-z]s$/.test(props.unit) ? props.unit.slice
 </script>
 
 <template>
-  <div class="bars" role="list">
+  <div v-reveal="'bars'" class="bars" role="list">
     <div v-for="r in rows" :key="r.label" class="bar-row" role="listitem">
       <span class="bar-label" :title="r.label"><router-link v-if="r.to" :to="r.to" class="in-link">{{ r.label }}</router-link><a v-else-if="r.href" :href="r.href" target="_blank" rel="noopener noreferrer" class="sp-link">{{ r.label }}</a><template v-else>{{ r.label }}</template><span v-if="r.sub" class="bar-sub"> · {{ r.sub }}</span></span>
       <span class="bar-track"><span class="bar" :style="{ width: `${(r.value / top) * 100}%`, background: color }"></span></span>
@@ -37,7 +37,7 @@ const unitFor = (v) => (v === 1 && /[a-z]s$/.test(props.unit) ? props.unit.slice
 .bar-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .bar-sub { color: var(--muted); }
 .bar-track { height: 10px; background: var(--track); border-radius: 5px; overflow: hidden; }
-.bar { display: block; height: 100%; border-radius: 5px; min-width: 3px; }
+.bar { display: block; height: 100%; border-radius: 5px; min-width: 3px; transition: width 0.6s cubic-bezier(0.2, 0.8, 0.2, 1); }
 .bar-value { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .bar-unit { color: var(--muted); font-size: 12px; }
 </style>
