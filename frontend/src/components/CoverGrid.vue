@@ -1,14 +1,19 @@
 <script setup>
 import { heroName } from '../transitions.js';
 import PlayButton from './PlayButton.vue';
+import { ref } from 'vue';
+import { useFlip } from '../flip.js';
 // Ranked cover grid: #1 gets a big tile, the rest smaller ones.
-defineProps({
+const props = defineProps({
   items: { type: Array, required: true }, // [{ id, name, sub, image, image_lg, url (Spotify) or to (in-app) }]
 });
+// Switching period or songs/artists slides covers to their new rank.
+const list = ref(null);
+useFlip(list, '.cell', () => props.items);
 </script>
 
 <template>
-  <ol v-reveal="'cascade'" class="grid" aria-label="Ranked by Spotify">
+  <ol ref="list" v-reveal="'cascade'" class="grid" aria-label="Ranked by Spotify">
     <li v-for="(it, i) in items" :key="it.id" class="cell playable" :class="{ hero: i === 0 }">
       <component
         :is="it.to ? 'router-link' : 'a'"

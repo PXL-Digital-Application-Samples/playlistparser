@@ -1,8 +1,10 @@
 <script setup>
-import { ref, computed } from 'vue';
+import { ref, computed, onBeforeUnmount } from 'vue';
+import { gsap } from 'gsap';
 import { spotifyUrl } from '../api.js';
 import { familyColor, FAMILY_ORDER } from '../families.js';
 import { play } from '../player.js';
+import { motionOn } from '../motion.js';
 
 // Every song with a known tempo: release year (x) vs BPM (y), dot size =
 // Last.fm listeners, colour = genre family. Hover for details, click to play.
@@ -25,9 +27,35 @@ const x = (year) => L + ((year - yearRange.value[0]) / (yearRange.value[1] - yea
 const y = (bpm) => T + (1 - (Math.min(Math.max(bpm, BPM_MIN), BPM_MAX) - BPM_MIN) / (BPM_MAX - BPM_MIN)) * (H - T - B);
 const r = (listeners) => (listeners ? 2 + Math.min(6, Math.sqrt(Math.log10(listeners + 1)) * 2.3) : 2.5);
 
+// Time-lapse: a year cursor sweeps from the oldest song to the newest and
+// songs appear as their release year passes.
+const sweep = ref(null); // current year while the time-lapse runs
+let sweepTween = null;
+function timeLapse() {
+  if (sweepTween) {
+    sweepTween.kill();
+    sweepTween = null;
+    sweep.value = null;
+    return;
+  }
+  const [from, to] = yearRange.value;
+  const state = { year: from };
+  sweep.value = from;
+  sweepTween = gsap.to(state, {
+    year: to, duration: motionOn() ? Math.min(14, Math.max(6, (to - from) / 6)) : 0.01, ease: 'none',
+    onUpdate: () => (sweep.value = state.year),
+    onComplete: () => {
+      sweepTween = null;
+      setTimeout(() => { if (!sweepTween) sweep.value = null; }, 1200);
+    },
+  });
+}
+onBeforeUnmount(() => sweepTween?.kill());
+
 const dots = computed(() =>
   props.points
     .filter((p) => !hidden.value.has(p.family ?? 'other'))
+    .filter((p) => sweep.value === null || p.year <= sweep.value)
     .map((p) => ({ ...p, cx: x(p.year), cy: y(p.bpm), r: r(p.listeners), color: familyColor(p.family) }))
     .sort((a, b) => b.r - a.r)
 );
@@ -58,6 +86,13 @@ function toggle(f) {
 
 <template>
   <div class="sound">
+    <div class="toolbar">
+      <button type="button" class="lapse" :aria-pressed="sweep !== null" @click="timeLapse">
+        <svg v-if="sweep === null" width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5v14l11-7z" /></svg>
+        <svg v-else width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><rect x="6" y="6" width="12" height="12" rx="2" /></svg>
+        {{ sweep === null ? 'Play time-lapse' : 'Stop' }}
+      </button>
+    </div>
     <div class="chips" role="group" aria-label="Show genre families">
       <button v-for="{ f, n } in families" :key="f" class="chip" :aria-pressed="!hidden.has(f)" @click="toggle(f)"
         @mouseenter="spot = f" @mouseleave="spot = null" @focus="spot = f" @blur="spot = null">
@@ -75,6 +110,10 @@ function toggle(f) {
         </g>
         <text v-for="d in decades" :key="d" :x="x(d)" :y="H - 8" text-anchor="middle" class="axis">{{ d }}</text>
         <text :x="10" :y="T + 4" class="axis" transform="rotate(-90 10 14)" text-anchor="end">BPM</text>
+        <g v-if="sweep !== null" aria-hidden="true">
+          <text :x="L + 14" :y="T + 64" class="year-big">{{ Math.floor(sweep) }}</text>
+          <line :x1="x(sweep)" :x2="x(sweep)" :y1="T" :y2="H - B" class="sweep" />
+        </g>
         <a
           v-for="p in dots"
           :key="p.id"
@@ -86,7 +125,7 @@ function toggle(f) {
           @focus="hover = p"
           @click="onDot($event, p)"
         >
-          <circle :cx="p.cx" :cy="p.cy" :r="p.r" :fill-opacity="(hover && hover.id !== p.id) || (spot && (p.family ?? 'other') !== spot) ? 0.15 : 0.85"
+          <circle :class="{ pop: sweep !== null }" :cx="p.cx" :cy="p.cy" :r="p.r" :fill-opacity="(hover && hover.id !== p.id) || (spot && (p.family ?? 'other') !== spot) ? 0.15 : 0.85"
             :style="{ fill: p.color, stroke: hover?.id === p.id ? 'var(--text)' : 'var(--surface)' }" :stroke-width="hover?.id === p.id ? 2 : 1" />
         </a>
         <text v-for="[, hi, label] in BANDS" :key="'b' + label" :x="W - R - 4" :y="y(hi) + 12" text-anchor="end" class="band">{{ label }}</text>
@@ -111,6 +150,17 @@ function toggle(f) {
 
 <style scoped>
 .plot { position: relative; }
+.toolbar { display: flex; margin: 0 0 10px; }
+.lapse {
+  display: inline-flex; align-items: center; gap: 6px; font: inherit; font-size: 13px; font-weight: 650;
+  padding: 5px 12px; min-height: 30px; border-radius: 999px; cursor: pointer;
+  background: var(--accent); color: var(--accent-ink); border: none;
+}
+.lapse[aria-pressed='true'] { background: var(--surface-muted); color: var(--text); }
+.year-big { font-family: var(--font-display); font-size: 64px; font-weight: 800; fill: var(--text); opacity: 0.18; }
+.sweep { stroke: var(--mark); stroke-width: 2; opacity: 0.8; }
+.pop { transform-box: fill-box; transform-origin: center; animation: pop 0.5s cubic-bezier(0.2, 1.8, 0.4, 1) both; }
+@keyframes pop { from { transform: scale(0); } 60% { transform: scale(1.8); } to { transform: scale(1); } }
 .grid { stroke: var(--surface-muted); stroke-width: 1; }
 .axis { font-size: 10px; fill: var(--muted); }
 .band { font-size: 10px; fill: var(--muted); font-style: italic; paint-order: stroke; stroke: var(--surface); stroke-width: 3px; }

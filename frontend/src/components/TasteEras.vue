@@ -1,6 +1,8 @@
 <script setup>
-import { ref, computed } from 'vue';
+import { ref, computed, watch, onBeforeUnmount } from 'vue';
+import { gsap } from 'gsap';
 import { familyColor, byFamilyOrder } from '../families.js';
+import { motionOn } from '../motion.js';
 
 // Streamgraph: share of each genre family per year you added songs, centred
 // so the streams swell and shrink around a middle line.
@@ -12,8 +14,38 @@ const props = defineProps({
 const W = 680, H = 260, PAD = 18;
 const hover = ref(null);
 
+// The shares on screen. When the data changes (e.g. the album-save switch)
+// and the years are the same, they flow from the old shares to the new ones.
+const shown = ref([]); // [{ year, shares: { family: 0..1 } }]
+let tween = null;
+const toShares = (rows) => rows.map((r) => ({
+  year: r.year,
+  shares: Object.fromEntries(Object.entries(r.counts).map(([f, n]) => [f, r.total ? n / r.total : 0])),
+}));
+watch(() => props.rows, (rows) => {
+  const next = toShares(rows);
+  const prev = shown.value;
+  tween?.kill();
+  if (!motionOn() || prev.length !== next.length || prev.some((r, i) => r.year !== next[i].year)) {
+    shown.value = next;
+    return;
+  }
+  const fams = [...new Set(prev.concat(next).flatMap((r) => Object.keys(r.shares)))];
+  const p = { t: 0 };
+  tween = gsap.to(p, {
+    t: 1, duration: 1.1, ease: 'power2.inOut',
+    onUpdate: () => {
+      shown.value = next.map((r, i) => ({
+        year: r.year,
+        shares: Object.fromEntries(fams.map((f) => [f, (prev[i].shares[f] ?? 0) + ((r.shares[f] ?? 0) - (prev[i].shares[f] ?? 0)) * p.t])),
+      }));
+    },
+  });
+}, { immediate: true });
+onBeforeUnmount(() => tween?.kill());
+
 const layers = computed(() => {
-  const rows = props.rows;
+  const rows = shown.value;
   if (rows.length < 2) return [];
   const xs = rows.map((_, i) => PAD + (i / (rows.length - 1)) * (W - 2 * PAD));
   const scale = (H - 30) / 1; // shares sum to 1 per year
@@ -23,7 +55,7 @@ const layers = computed(() => {
     const lower = [];
     const upper = [];
     rows.forEach((r, i) => {
-      const share = r.total ? r.counts[f] / r.total : 0;
+      const share = r.shares[f] ?? 0;
       const y0 = H / 2 - scale / 2 + cum[i] * scale;
       cum[i] += share;
       lower.push([xs[i], y0]);
@@ -38,7 +70,7 @@ const layers = computed(() => {
       label: upper[best][1] - lower[best][1] > 16
         ? { x: Math.min(W - PAD - 60, Math.max(PAD + 60, xs[best])), y: (upper[best][1] + lower[best][1]) / 2 + 4 }
         : null,
-      shares: rows.map((r) => ({ year: r.year, pct: r.total ? Math.round((r.counts[f] / r.total) * 100) : 0 })),
+      shares: props.rows.map((r) => ({ year: r.year, pct: r.total ? Math.round(((r.counts[f] ?? 0) / r.total) * 100) : 0 })),
     };
   });
 });

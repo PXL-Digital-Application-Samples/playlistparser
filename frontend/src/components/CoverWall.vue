@@ -1,5 +1,6 @@
 <script setup>
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
+import { useFlip } from '../flip.js';
 import { heroName } from '../transitions.js';
 
 // Treemap of album covers: tile area = number of likes for that album.
@@ -72,10 +73,13 @@ const tiles = computed(() => {
     },
   }));
 });
+// When the albums change (e.g. the album-save switch), tiles glide to their new size.
+const wall = ref(null);
+useFlip(wall, '.wall-tile', () => props.albums, { duration: 0.9 });
 </script>
 
 <template>
-  <div class="wall" :style="{ height: `${height}px` }" role="list" aria-label="Album cover wall, larger covers have more likes">
+  <div ref="wall" class="wall" :style="{ height: `${height}px` }" role="list" aria-label="Album cover wall, larger covers have more likes">
     <figure v-for="t in tiles" :key="t.id" class="wall-tile" :class="t.size" :style="t.style" role="listitem">
       <router-link :to="`/album/${t.id}`" class="sp-cover tile-a" :title="t.name">
       <img
