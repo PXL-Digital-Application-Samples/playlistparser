@@ -5,6 +5,7 @@ import { endpoints, describeError } from '../api.js';
 import { loadPlaylists, plural } from '../playlistCache.js';
 import Icon from '../components/Icon.vue';
 import LikedCover from '../components/LikedCover.vue';
+import SpotifyIcon from '../components/SpotifyIcon.vue';
 
 const props = defineProps({ me: Object, meLoading: Boolean });
 const route = useRoute();
@@ -160,7 +161,7 @@ onBeforeUnmount(() => clearTimeout(pollTimer));
         Statistics, duplicate checks and CSV exports for your Spotify playlists.
         Read-only: nothing on your Spotify account is changed.
       </p>
-      <a :href="loginUrl" class="btn btn-primary">Log in with Spotify</a>
+      <a :href="loginUrl" class="btn btn-primary"><SpotifyIcon :size="22" /> Log in with Spotify</a>
       <p class="muted small">
         This app runs in Spotify development mode: your account must be added by the app owner.
       </p>
