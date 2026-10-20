@@ -10,6 +10,7 @@ import StoryCards from '../components/StoryCards.vue';
 import CoverWall from '../components/CoverWall.vue';
 import BarList from '../components/BarList.vue';
 import ChartFrame from '../components/ChartFrame.vue';
+import ShareButton from '../components/ShareButton.vue';
 
 const props = defineProps({ summary: Object, deep: Object, lensKey: String });
 const loginUrl = inject('loginUrl');
@@ -46,6 +47,13 @@ const compareLine = computed(() => {
 });
 
 const cards = computed(() => highlightCards(props.summary, props.lensKey));
+// The summary as a shareable card, with the most-liked album as its picture.
+const tasteCard = computed(() => ({
+  kicker: 'My taste',
+  big: profileLine.value,
+  text: fpMain.value?.top_genres.length ? fpMain.value.top_genres.slice(0, 4).map((g) => g.genre).join(' · ') : compareLine.value,
+  image: lens.value?.wall[0]?.image_lg || lens.value?.wall[0]?.image || null,
+}));
 const decadeRows = computed(() => {
   const p = fpMain.value;
   if (!p) return [];
@@ -75,6 +83,7 @@ const decadeRows = computed(() => {
           <div class="tile"><strong>{{ fpMain.artist_variety_pct ?? 0 }}%</strong><span class="label">artist variety</span></div>
           <div v-if="summary.album_saves.saves" class="tile"><strong>{{ summary.album_saves.saves }}</strong><span class="label">whole albums saved</span></div>
         </div>
+        <ShareButton :card="tasteCard" class="hero-share" />
       </div>
       <div class="hero-art">
         <TasteFingerprint
@@ -198,6 +207,7 @@ const decadeRows = computed(() => {
 .chip { font-size: 12.5px; padding: 3px 10px; border-radius: 999px; background: var(--accent-soft); color: var(--accent-strong); }
 .facts { margin-top: 18px; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); }
 .facts .tile { background: var(--surface-muted); border-color: transparent; }
+.hero-share { margin-top: 16px; }
 .hero-art { max-width: 300px; justify-self: center; width: 100%; }
 
 .album-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }

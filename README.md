@@ -35,6 +35,7 @@ The app has four sections, in a side rail on desktop and a tab bar on phones: **
 - **Artist and album pages**: everything in your library by one artist or from one album: your songs and which playlists they're in, likes per year, how much of an album you have, tags, origin and similar artists. Names everywhere link to these pages; "Open in Spotify" is always one click away.
 - **CSV export** of one playlist, or of all your playlists as a background job.
 - Liked Songs separates songs you **liked one by one** from **whole albums you saved** (Spotify adds every track of a saved album). One setting, "Count songs from saved albums", applies to every page.
+- **Share cards**: save any highlight, or the summary of your taste, as a 1080×1920 image (story format). Phones open the share sheet; desktops download a PNG.
 - Every chart has a **Show as list** view with the same data as a table, for keyboard and screen-reader users.
 
 <img src="assets/liked-songs.png" alt="Liked Songs: overview, top artists and albums, timeline" width="800">

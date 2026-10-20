@@ -16,30 +16,30 @@ export function highlightCards(summary, lensKey) {
     const now = top.short_term.artists[0];
     const year = top.long_term.artists[0];
     out.push({
-      kicker: 'Your #1 artist lately', tone: 'purple', big: now.name, to: `/artist/${now.id}`, image: now.image,
+      kicker: 'Your #1 artist lately', big: now.name, to: `/artist/${now.id}`, image: now.image, image_lg: now.image_lg,
       text: year && year.id !== now.id ? `Over the past year it was ${year.name}.` : 'Also your #1 over the past year.',
     });
   }
   if (top?.short_term.tracks[0]) {
     const t = top.short_term.tracks[0];
-    out.push({ kicker: 'On repeat', tone: 'coral', big: t.name, image: t.image, text: `${names(t)}: your top song of the past 4 weeks.` });
+    out.push({ kicker: 'On repeat', big: t.name, image: t.image, image_lg: t.image_lg, text: `${names(t)}: your top song of the past 4 weeks.` });
   }
   if (l?.depth.deepest[0]) {
     const d = l.depth.deepest[0];
-    out.push({ kicker: lensKey === 'all' ? 'Most liked artist' : 'Most hand-picked artist', tone: 'blue', big: d.name, to: d.id ? `/artist/${d.id}` : null, text: `${plural(d.count, unit)}.` });
+    out.push({ kicker: lensKey === 'all' ? 'Most liked artist' : 'Most hand-picked artist', big: d.name, to: d.id ? `/artist/${d.id}` : null, text: `${plural(d.count, unit)}.` });
   }
   if (l?.age.median_age_years !== null && l?.age.median_age_years !== undefined) {
-    out.push({ kicker: 'Nostalgia score', tone: 'amber', big: `${l.age.median_age_years} years`, text: 'How old a song typically was when you liked it.' });
+    out.push({ kicker: 'Nostalgia score', big: `${l.age.median_age_years} years`, text: 'How old a song typically was when you liked it.' });
   }
   if (l?.calendar.busiest_day) {
-    out.push({ kicker: 'Busiest day', tone: 'green', big: fmtDate(l.calendar.busiest_day.date), text: `${plural(l.calendar.busiest_day.count, unit)} that day.` });
+    out.push({ kicker: 'Busiest day', big: fmtDate(l.calendar.busiest_day.date), image: l.calendar.covers?.[l.calendar.busiest_day.date]?.[0] ?? null, text: `${plural(l.calendar.busiest_day.count, unit)} that day.` });
   }
   if (l?.age.oldest_when_liked) {
     const o = l.age.oldest_when_liked;
-    out.push({ kicker: 'Oldest find', tone: 'purple', big: o.track.name, text: `${names(o.track)}: ${Math.round(o.age)} years old when you liked it.` });
+    out.push({ kicker: 'Oldest find', big: o.track.name, image: o.track.image ?? null, text: `${names(o.track)}: ${Math.round(o.age)} years old when you liked it.` });
   }
   if (l?.depth.one_like_pct !== null && l?.depth.one_like_pct !== undefined) {
-    out.push({ kicker: 'Explorer', tone: 'dark', big: `${Math.round(l.depth.one_like_pct)}%`, text: `of your ${l.depth.artists_total.toLocaleString()} artists you liked just once.` });
+    out.push({ kicker: 'Explorer', big: `${Math.round(l.depth.one_like_pct)}%`, text: `of your ${l.depth.artists_total.toLocaleString()} artists you liked just once.` });
   }
   return out;
 }
