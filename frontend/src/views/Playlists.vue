@@ -97,7 +97,7 @@ const exporting = computed(() => exportJob.value && !['completed', 'error'].incl
       </div>
       <div v-if="analyzable.length" class="head-actions">
         <router-link to="/compare" class="btn btn-secondary btn-sm"><Icon name="compare" :size="15" /> Compare two</router-link>
-        <button class="btn btn-secondary btn-sm" :disabled="exporting" @click="startExportAll">
+        <button class="btn btn-primary btn-sm" :disabled="exporting" @click="startExportAll">
           <Icon name="download" :size="15" /> {{ exporting ? 'Exporting…' : 'Export all to CSV' }}
         </button>
       </div>
