@@ -5,6 +5,8 @@ import { plural } from '../playlistCache.js';
 import { lens } from '../settings.js';
 import { overview, sync, syncing, syncVersion, ago } from '../status.js';
 import { highlightCards } from '../highlights.js';
+import { coverTint } from '../coverTint.js';
+import { setBackdropTint } from '../backdrop.js';
 import { INSIGHT_TABS } from '../nav.js';
 import Icon from '../components/Icon.vue';
 import StoryCards from '../components/StoryCards.vue';
@@ -31,6 +33,8 @@ const topArtists = computed(() => {
   return top?.status === 'ok' ? top.data.short_term.artists.slice(0, 8) : [];
 });
 const totals = computed(() => overview.value?.totals);
+// The background takes the colour of your #1 artist lately.
+watch(() => topArtists.value[0]?.image, async (url) => url && setBackdropTint(await coverTint(url)), { immediate: true });
 const health = computed(() => overview.value?.health);
 const firstName = computed(() => (props.me?.displayName || '').split(' ')[0]);
 

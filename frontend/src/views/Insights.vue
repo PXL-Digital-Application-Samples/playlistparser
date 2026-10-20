@@ -147,7 +147,8 @@ const needsReauth = computed(() =>
 .tabs {
   display: flex; gap: 4px; overflow-x: auto; scrollbar-width: none;
   position: sticky; top: var(--header-h); z-index: 10;
-  margin: 0 -4px 12px; padding: 8px 4px; background: var(--bg); border-bottom: 1px solid var(--border);
+  margin: 0 -4px 12px; padding: 8px 4px; border-bottom: 1px solid var(--border);
+  background: color-mix(in srgb, var(--bg) 78%, transparent); backdrop-filter: blur(12px);
 }
 .basis { margin: 0 0 24px; font-size: 13px; color: var(--muted); max-width: 75ch; }
 .tab {

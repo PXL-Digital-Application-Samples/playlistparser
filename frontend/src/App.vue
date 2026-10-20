@@ -8,6 +8,7 @@ import StatusPanel from './components/StatusPanel.vue';
 import ThemeSwitch from './components/ThemeSwitch.vue';
 import MotionSwitch from './components/MotionSwitch.vue';
 import PlayerDock from './components/PlayerDock.vue';
+import ShaderBackdrop from './components/ShaderBackdrop.vue';
 import { INSIGHT_TABS } from './nav.js';
 
 const router = useRouter();
@@ -88,6 +89,7 @@ const shell = computed(() => loading.value || me.value);
 <template>
   <a href="#main" class="skip-link">Skip to content</a>
 
+  <ShaderBackdrop />
   <div :class="shell ? 'shell' : 'public'">
     <!-- Desktop: side rail -->
     <aside v-if="shell" class="rail" aria-label="App">
@@ -172,7 +174,8 @@ const shell = computed(() => loading.value || me.value);
 <style>
 /* ---- Shell: rail on the left (desktop), top bar + tab bar (phone) ---------- */
 .shell { min-height: 100vh; }
-.main { min-width: 0; }
+.main { min-width: 0; position: relative; z-index: 1; }
+.public { position: relative; z-index: 1; }
 .main:focus { outline: none; }
 
 .brand { display: inline-flex; align-items: center; gap: 10px; color: var(--text); text-decoration: none; }

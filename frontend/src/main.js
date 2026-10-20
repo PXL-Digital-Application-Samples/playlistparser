@@ -11,6 +11,7 @@ import { setTitle } from './title.js';
 import { INSIGHT_TABS } from './nav.js';
 import { reveal } from './motion.js';
 import { installTransitions } from './transitions.js';
+import { setBackdropTint } from './backdrop.js';
 
 // `section` = the main navigation item a page belongs to (highlighted in the
 // rail and tab bar). Pages about one thing set their own title from its name.
@@ -40,6 +41,7 @@ const router = createRouter({
 });
 installTransitions(router);
 router.afterEach((to) => {
+  setBackdropTint(null); // pages with a cover set their own
   const tab = INSIGHT_TABS.find((t) => t.key === to.params.tab);
   setTitle(tab ? `${tab.label} · Insights` : to.meta.title);
 });

@@ -5,6 +5,7 @@ import { endpoints, describeError, spotifyUrl } from '../api.js';
 import { plural } from '../playlistCache.js';
 import { setTitle } from '../title.js';
 import { coverTint } from '../coverTint.js';
+import { setBackdropTint } from '../backdrop.js';
 import { syncVersion } from '../status.js';
 import { heroName, heroFallback } from '../transitions.js';
 import Icon from '../components/Icon.vue';
@@ -38,7 +39,10 @@ watch(syncVersion, load);
 watch(() => artist.value?.name, (n) => setTitle(n || 'Artist'), { immediate: true });
 
 const picture = computed(() => artist.value?.photo?.image_lg || artist.value?.photo?.image || artist.value?.image || heroFallback(`/artist/${props.id}`));
-watch(picture, async (url) => { tint.value = await coverTint(url); }, { immediate: true });
+watch(picture, async (url) => {
+  tint.value = await coverTint(url);
+  setBackdropTint(tint.value);
+}, { immediate: true });
 
 const fmtMonth = (iso) => (iso ? new Date(iso).toLocaleDateString(undefined, { month: 'long', year: 'numeric' }) : null);
 const fmtLen = (ms) => {
@@ -194,7 +198,7 @@ watch(() => props.id, () => (songsShown.value = SONGS_STEP));
 .side { display: flex; flex-direction: column; gap: 20px; }
 
 .song-list { list-style: none; margin: 0; padding: 0; }
-.song { display: grid; grid-template-columns: 40px minmax(0, 1fr) auto 44px; gap: 12px; align-items: center; padding: 8px 0; border-top: 1px solid var(--border); }
+.song { display: grid; grid-template-columns: 40px minmax(150px, 1fr) minmax(0, max-content) 44px; gap: 12px; align-items: center; padding: 8px 0; border-top: 1px solid var(--border); }
 .song:first-child { border-top: none; }
 .song .cover { position: relative; width: 40px; height: 40px; border-radius: 4px; background: var(--surface-muted); }
 .song .cover img { width: 100%; height: 100%; border-radius: 4px; object-fit: cover; display: block; }
