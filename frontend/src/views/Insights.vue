@@ -217,11 +217,7 @@ async function fetchSection(name) {
 </script>
 
 <template>
-  <section v-if="!meLoading && !me" class="page">
-    <p>Log in with Spotify to see your insights.</p>
-  </section>
-
-  <div v-else class="page">
+  <div v-if="meLoading || me" class="page">
     <header class="ins-head">
       <div>
         <h1>Insights</h1>

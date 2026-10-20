@@ -227,11 +227,7 @@ function exportToCsv() {
 </script>
 
 <template>
-  <section v-if="!meLoading && !me" class="page">
-    <p>Log in with Spotify to view playlist details.</p>
-  </section>
-
-  <div v-else class="page">
+  <div v-if="meLoading || me" class="page">
     <router-link to="/" class="btn btn-link back"><Icon name="arrow-left" :size="16" /> All playlists</router-link>
 
     <!-- Header -->

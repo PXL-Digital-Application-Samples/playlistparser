@@ -1,9 +1,8 @@
 <script setup>
-import { ref, onMounted, provide } from 'vue';
+import { ref, onMounted, provide, watch } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import { endpoints, describeError } from './api.js';
 import Icon from './components/Icon.vue';
-import SpotifyIcon from './components/SpotifyIcon.vue';
 
 const router = useRouter();
 const route = useRoute();
@@ -20,6 +19,14 @@ const LOGIN_ERRORS = {
     'This Spotify account is not allowed to use this app. In development mode the app owner must add it under "User Management" in the Spotify dashboard.',
   spotify_login_failed: 'Spotify login failed. Check the API logs and Spotify app settings.',
 };
+
+// Logged out on any page other than the welcome page: go to the welcome
+// page, which has the (only) login button.
+// Also re-checked when the route changes: the first navigation (e.g. to a
+// lazily loaded page) can finish after the login check.
+watch([loading, me, () => route.path], () => {
+  if (!loading.value && !me.value && route.path !== '/') router.replace('/');
+});
 
 async function loadMe() {
   loading.value = true;
@@ -72,11 +79,6 @@ onMounted(() => {
           <Icon name="logout" :size="16" /> Log out
         </button>
       </template>
-      <!-- The welcome page has its own login button; don't show two. -->
-      <a v-else-if="route.path !== '/'" :href="LOGIN_URL" class="btn btn-primary btn-sm">
-        <SpotifyIcon />
-        Log in with Spotify
-      </a>
     </div>
   </header>
   <div v-if="notice" class="notice" role="alert">
