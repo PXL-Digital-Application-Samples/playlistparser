@@ -74,7 +74,7 @@ const topDecade = computed(() => [...props.profile.decades].sort((a, b) => b.sha
       :aria-label="`Taste fingerprint: mostly ${topDecade?.decade} music, average song ${fmtLen(profile.avg_length_ms)}, ${profile.explicit_pct ?? 0}% explicit, ${profile.artist_variety_pct ?? 0}% artist variety`">
       <circle :cx="C" :cy="C" :r="R1" fill="none" stroke="var(--border)" stroke-dasharray="1 5" />
       <circle :cx="C" :cy="C" :r="R1 + 30" fill="none" stroke="var(--surface-muted)" stroke-width="6" />
-      <path v-if="explicitArc" :d="explicitArc" fill="none" stroke="#e8590c" stroke-width="6" stroke-linecap="round">
+      <path v-if="explicitArc" :d="explicitArc" fill="none" class="explicit-arc" stroke-width="6" stroke-linecap="round">
         <title>{{ profile.explicit_pct }}% explicit</title>
       </path>
       <path v-for="p in main" :key="p.decade" v-show="p.d" :d="p.d || ''" class="petal">
@@ -84,29 +84,30 @@ const topDecade = computed(() => [...props.profile.decades].sort((a, b) => b.sha
         <title>{{ p.decade }}: {{ Math.round(p.share * 100) }}% of {{ compareLabel.toLowerCase() }}</title>
       </path>
       <text v-for="p in main" :key="'l' + p.decade" :x="p.label.split(',')[0]" :y="Number(p.label.split(',')[1]) + 4" text-anchor="middle" class="dec">{{ p.decade }}</text>
-      <circle v-for="(d, i) in dots" :key="i" :cx="d.x" :cy="d.y" r="2.4" :fill="d.on ? '#7f6bd8' : 'var(--surface-muted)'" />
+      <circle v-for="(d, i) in dots" :key="i" :cx="d.x" :cy="d.y" r="2.4" :style="{ fill: d.on ? 'var(--fam-electronic)' : 'var(--surface-muted)' }" />
       <text :x="C" :y="C + 2" text-anchor="middle" class="len">{{ fmtLen(profile.avg_length_ms) }}</text>
       <text :x="C" :y="C + 16" text-anchor="middle" class="len-sub">avg song</text>
     </svg>
     <figcaption class="legend">
       <span><i class="sw petal-sw"></i>{{ label }} by decade</span>
       <span v-if="compare"><i class="sw compare-sw"></i>{{ compareLabel }}</span>
-      <span><i class="sw" style="background:#e8590c"></i>explicit {{ profile.explicit_pct ?? 0 }}%</span>
-      <span><i class="sw" style="background:#7f6bd8; border-radius:50%"></i>artist variety {{ profile.artist_variety_pct ?? 0 }}%</span>
+      <span><i class="sw" style="background: var(--fam-pop)"></i>explicit {{ profile.explicit_pct ?? 0 }}%</span>
+      <span><i class="sw" style="background: var(--fam-electronic); border-radius: 50%"></i>artist variety {{ profile.artist_variety_pct ?? 0 }}%</span>
     </figcaption>
   </figure>
 </template>
 
 <style scoped>
 .fp { margin: 0; }
-.petal { fill: #1db954; opacity: 0.88; }
-.petal-compare { fill: none; stroke: #7f6bd8; stroke-width: 2; stroke-dasharray: 4 3; }
+.petal { fill: var(--accent); opacity: 0.9; }
+.explicit-arc { stroke: var(--fam-pop); }
+.petal-compare { fill: none; stroke: var(--text); stroke-width: 1.5; stroke-dasharray: 4 3; }
 .dec { font-size: 11px; fill: var(--muted); }
 .len { font-size: 22px; font-weight: 800; fill: var(--text); }
 .len-sub { font-size: 10px; fill: var(--muted); }
 .legend { display: flex; flex-wrap: wrap; justify-content: center; gap: 4px 14px; font-size: 12px; color: var(--muted); }
 .legend span { display: inline-flex; align-items: center; gap: 5px; }
 .sw { width: 11px; height: 11px; border-radius: 3px; display: inline-block; }
-.petal-sw { background: #1db954; }
-.compare-sw { border: 2px dashed #7f6bd8; }
+.petal-sw { background: var(--accent); }
+.compare-sw { border: 2px dashed var(--text); }
 </style>

@@ -276,7 +276,7 @@ function exportToCsv() {
 
 <template>
   <div v-if="meLoading || me" class="page">
-    <router-link to="/" class="btn btn-link back"><Icon name="arrow-left" :size="16" /> All playlists</router-link>
+    <router-link to="/playlists" class="btn btn-link back"><Icon name="arrow-left" :size="16" /> All playlists</router-link>
 
     <!-- Header -->
     <header class="pl-head">
@@ -297,7 +297,10 @@ function exportToCsv() {
           <button class="btn btn-primary" :disabled="!stats" @click="exportToCsv">
             <Icon name="download" :size="16" /> Export CSV
           </button>
-          <a v-if="info?.url" :href="info.url" target="_blank" rel="noopener noreferrer" class="btn btn-secondary">
+          <router-link :to="{ path: '/compare', query: { a: id } }" class="btn btn-secondary">
+            <Icon name="compare" :size="16" /> Compare
+          </router-link>
+          <a v-if="info?.url" :href="info.url" target="_blank" rel="noopener noreferrer" class="btn btn-spotify">
             Open in Spotify <Icon name="external" :size="14" />
           </a>
         </div>
@@ -375,13 +378,13 @@ function exportToCsv() {
         <div class="grid-2">
           <div v-if="stats.top_artists.length">
             <h3>Top artists <span class="muted small">{{ isLiked && lens === 'all' ? 'by likes (an album save counts once), not plays' : 'by number of songs here, not plays' }}</span></h3>
-            <BarList :rows="stats.top_artists.map((a) => ({ label: a.name, value: a.count }))" :unit="isLiked && lens === 'all' ? 'likes' : 'songs'" />
+            <BarList :rows="stats.top_artists.map((a) => ({ label: a.name, value: a.count, to: a.id ? `/artist/${a.id}` : null }))" :unit="isLiked && lens === 'all' ? 'likes' : 'songs'" />
           </div>
           <div v-if="stats.top_albums.length">
             <h3>Top albums</h3>
             <ol class="plain-list">
               <li v-for="a in stats.top_albums" :key="a.name + a.artist">
-                <span>{{ a.name }}</span> <span class="muted">· {{ a.artist }}</span>
+                <router-link v-if="a.id" :to="`/album/${a.id}`" class="in-link">{{ a.name }}</router-link><span v-else>{{ a.name }}</span> <span class="muted">· {{ a.artist }}</span>
                 <span class="count">{{ plural(a.count, 'track') }}</span>
               </li>
             </ol>
@@ -559,8 +562,18 @@ function exportToCsv() {
                     </span>
                   </div>
                 </td>
-                <td class="col-artist"><span class="clip" :title="artistNames(t)">{{ artistNames(t) || '—' }}</span></td>
-                <td class="col-album wide"><span class="clip" :title="t.album?.name">{{ t.album?.name || '—' }}</span></td>
+                <td class="col-artist">
+                  <span class="clip" :title="artistNames(t)">
+                    <template v-for="(a, i) in t.artists" :key="a.id || a.name"><router-link v-if="a.id" :to="`/artist/${a.id}`" class="in-link">{{ a.name }}</router-link><template v-else>{{ a.name }}</template><template v-if="i < t.artists.length - 1">, </template></template>
+                    <template v-if="!t.artists.length">—</template>
+                  </span>
+                </td>
+                <td class="col-album wide">
+                  <span class="clip" :title="t.album?.name">
+                    <router-link v-if="t.album?.id" :to="`/album/${t.album.id}`" class="in-link">{{ t.album.name }}</router-link>
+                    <template v-else>{{ t.album?.name || '—' }}</template>
+                  </span>
+                </td>
                 <td class="num col-year wide">{{ year(t) || '—' }}</td>
                 <td class="num col-len">{{ fmtDuration(t.duration_ms) }}</td>
                 <td v-if="lastfmOn" class="num col-lis wide">{{ fmtNumber(listenersById.get(t.id)?.listeners) }}</td>
@@ -596,14 +609,14 @@ function exportToCsv() {
 .pl-cover {
   width: 136px;
   height: 136px;
-  border-radius: 8px;
+  border-radius: 10px;
   object-fit: cover;
   flex: none;
-  box-shadow: var(--shadow);
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.3);
 }
 .pl-cover.no-anim { animation: none; }
 .pl-title { min-width: 0; flex: 1; }
-.pl-title h1 { margin: 0 0 6px; font-size: 2rem; line-height: 1.15; overflow-wrap: anywhere; }
+.pl-title h1 { margin: 0 0 6px; font-size: clamp(1.8rem, 4vw, 2.6rem); line-height: 1.05; letter-spacing: -0.02em; overflow-wrap: anywhere; }
 .title-skel { height: 36px; width: 60%; margin-bottom: 10px; }
 .pl-meta { margin: 0; color: var(--muted); display: flex; flex-wrap: wrap; gap: 6px; align-items: center; font-size: 14px; }
 .pl-meta .badge { display: inline-flex; gap: 4px; align-items: center; }
@@ -710,6 +723,7 @@ a.card-sub { color: var(--link); }
   border-bottom: 1px solid var(--border);
   text-align: left;
   padding: 0;
+  font-size: 13px;
 }
 .tracks td { padding: 6px 10px; border-bottom: 1px solid var(--surface-muted); vertical-align: middle; }
 .tracks .num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }

@@ -91,11 +91,14 @@ export function libraryOverTime(events) {
     if (!d) continue;
     bump(perMonth, d.toISOString().slice(0, 7));
     const y = d.getUTCFullYear();
-    if (!perYear.has(y)) perYear.set(y, { total: 0, artists: new Map(), albums: new Map() });
+    if (!perYear.has(y)) perYear.set(y, { total: 0, artists: new Map(), ids: new Map(), albums: new Map() });
     const yr = perYear.get(y);
     yr.total++;
     const main = e.artists[0];
-    if (main) bump(yr.artists, main.name);
+    if (main) {
+      bump(yr.artists, main.name);
+      if (main.id) yr.ids.set(main.name, main.id);
+    }
     if (e.album?.image) {
       if (!yr.albums.has(e.album.id)) yr.albums.set(e.album.id, { id: e.album.id, image: e.album.image, image_lg: e.album.image_lg, name: e.album.name, n: 0 });
       yr.albums.get(e.album.id).n++;
@@ -120,7 +123,7 @@ export function libraryOverTime(events) {
     return {
       year,
       total: yr.total,
-      artists: [...yr.artists.entries()].sort((a, b) => b[1] - a[1]).slice(0, 3).map(([name, count]) => ({ name, count })),
+      artists: [...yr.artists.entries()].sort((a, b) => b[1] - a[1]).slice(0, 3).map(([name, count]) => ({ id: yr.ids.get(name) ?? null, name, count })),
       covers: [...yr.albums.values()].sort((a, b) => b.n - a.n).slice(0, 4).map((a) => ({ id: a.id, image: a.image, image_lg: a.image_lg, name: a.name })),
     };
   });

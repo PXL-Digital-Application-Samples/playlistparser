@@ -4,7 +4,7 @@ import { computed } from 'vue';
 // Horizontal bars with labels. `unit` is required on purpose: every number
 // says what it counts ("songs", "plays", "%"), so 177 can't be mistaken.
 const props = defineProps({
-  rows: { type: Array, required: true }, // [{ label, value, sub?, href? }]
+  rows: { type: Array, required: true }, // [{ label, value, sub?, to? (in-app), href? (Spotify) }]
   unit: { type: String, required: true },
   max: { type: Number, default: null },
   color: { type: String, default: 'var(--accent)' },
@@ -18,7 +18,7 @@ const unitFor = (v) => (v === 1 && /[a-z]s$/.test(props.unit) ? props.unit.slice
 <template>
   <div class="bars" role="list">
     <div v-for="r in rows" :key="r.label" class="bar-row" role="listitem">
-      <span class="bar-label" :title="r.label"><a v-if="r.href" :href="r.href" target="_blank" rel="noopener noreferrer" class="sp-link">{{ r.label }}</a><template v-else>{{ r.label }}</template><span v-if="r.sub" class="bar-sub"> · {{ r.sub }}</span></span>
+      <span class="bar-label" :title="r.label"><router-link v-if="r.to" :to="r.to" class="in-link">{{ r.label }}</router-link><a v-else-if="r.href" :href="r.href" target="_blank" rel="noopener noreferrer" class="sp-link">{{ r.label }}</a><template v-else>{{ r.label }}</template><span v-if="r.sub" class="bar-sub"> · {{ r.sub }}</span></span>
       <span class="bar-track"><span class="bar" :style="{ width: `${(r.value / top) * 100}%`, background: color }"></span></span>
       <span class="bar-value">{{ fmt(r.value) }} <span class="bar-unit">{{ unitFor(r.value) }}</span></span>
     </div>

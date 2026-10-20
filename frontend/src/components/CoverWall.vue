@@ -1,6 +1,5 @@
 <script setup>
 import { computed } from 'vue';
-import { spotifyUrl } from '../api.js';
 
 // Treemap of album covers: tile area = number of likes for that album.
 const props = defineProps({
@@ -76,8 +75,8 @@ const tiles = computed(() => {
 
 <template>
   <div class="wall" :style="{ height: `${height}px` }" role="list" aria-label="Album cover wall, larger covers have more likes">
-    <figure v-for="t in tiles" :key="t.id" class="tile" :class="t.size" :style="t.style" role="listitem">
-      <a :href="spotifyUrl('album', t.id)" target="_blank" rel="noopener noreferrer" class="sp-cover tile-a" :title="`Open ${t.name} in Spotify`">
+    <figure v-for="t in tiles" :key="t.id" class="wall-tile" :class="t.size" :style="t.style" role="listitem">
+      <router-link :to="`/album/${t.id}`" class="sp-cover tile-a" :title="t.name">
       <img
         :src="t.image"
         :srcset="t.image_lg ? `${t.image} 300w, ${t.image_lg} 640w` : undefined"
@@ -90,16 +89,16 @@ const tiles = computed(() => {
         <strong>{{ t.name }}</strong>
         <span>{{ t.artist }} · {{ t.count }} {{ t.count === 1 ? unit.replace(/s$/, '') : unit }}</span>
       </figcaption>
-      </a>
+      </router-link>
     </figure>
   </div>
 </template>
 
 <style scoped>
-.wall { position: relative; width: 100%; border-radius: 12px; overflow: hidden; background: #111; }
-.tile { position: absolute; margin: 0; padding: 1px; overflow: hidden; }
-.tile img { width: 100%; height: 100%; object-fit: cover; display: block; border-radius: 2px; transition: transform 0.3s ease, filter 0.3s ease; }
-.tile figcaption {
+.wall { position: relative; width: 100%; border-radius: 12px; overflow: hidden; background: var(--cover-bg); }
+.wall-tile { position: absolute; margin: 0; padding: 1px; overflow: hidden; }
+.wall-tile img { width: 100%; height: 100%; object-fit: cover; display: block; border-radius: 2px; transition: transform 0.3s ease, filter 0.3s ease; }
+.wall-tile figcaption {
   position: absolute; inset: auto 1px 1px 1px;
   display: flex; flex-direction: column; gap: 1px;
   padding: 18px 8px 6px;
@@ -108,15 +107,15 @@ const tiles = computed(() => {
   color: #fff; font-size: 12px; line-height: 1.25;
   transition: opacity 0.2s ease;
 }
-.tile.big figcaption { font-size: 14px; padding: 28px 10px 8px; }
-.tile.small figcaption { font-size: 11px; padding: 16px 6px 4px; }
-.tile.tiny figcaption { font-size: 10px; padding: 12px 4px 3px; }
-.tile.tiny figcaption span { display: none; }
-.tile figcaption strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.tile figcaption span { opacity: 0.85; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.tile.tiny:hover figcaption span, .tile.tiny:focus-within figcaption span { display: block; }
-.tile:hover img, .tile:focus-within img { transform: scale(1.04); filter: saturate(1.15); }
-.tile-a { display: block; width: 100%; height: 100%; position: relative; }
-.tile-a:focus-visible { outline: 3px solid var(--focus); outline-offset: -3px; }
-@media (prefers-reduced-motion: reduce) { .tile img { transition: none; } }
+.wall-tile.big figcaption { font-size: 14px; padding: 28px 10px 8px; }
+.wall-tile.small figcaption { font-size: 11px; padding: 16px 6px 4px; }
+.wall-tile.tiny figcaption { font-size: 10px; padding: 12px 4px 3px; }
+.wall-tile.tiny figcaption span { display: none; }
+.wall-tile figcaption strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.wall-tile figcaption span { opacity: 0.85; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.wall-tile.tiny:hover figcaption span, .wall-tile.tiny:focus-within figcaption span { display: block; }
+.wall-tile:hover img, .wall-tile:focus-within img { transform: scale(1.04); filter: saturate(1.15); }
+.wall-tile-a { display: block; width: 100%; height: 100%; position: relative; }
+.wall-tile-a:focus-visible { outline: 3px solid var(--focus); outline-offset: -3px; }
+@media (prefers-reduced-motion: reduce) { .wall-tile img { transition: none; } }
 </style>

@@ -60,7 +60,7 @@ function toggle(f) {
     <div class="plot" @mouseleave="hover = null">
       <svg :viewBox="`0 0 ${W} ${H}`" width="100%" role="img" :aria-label="`${points.length} songs by release year and tempo`">
         <g v-for="[lo, hi, label] in BANDS" :key="label">
-          <rect :x="L" :y="y(hi)" :width="W - L - R" :height="y(lo) - y(hi)" :fill="label === 'upbeat' ? 'rgba(29,185,84,0.06)' : 'transparent'" />
+          <rect :x="L" :y="y(hi)" :width="W - L - R" :height="y(lo) - y(hi)" :style="{ fill: label === 'upbeat' ? 'var(--accent-soft)' : 'transparent' }" />
         </g>
         <g v-for="b in [60, 80, 100, 120, 140, 160, 180, 200]" :key="b">
           <line :x1="L" :x2="W - R" :y1="y(b)" :y2="y(b)" class="grid" />
@@ -118,8 +118,8 @@ function toggle(f) {
 .tip {
   position: absolute; z-index: 5; transform: translate(12px, -50%); pointer-events: none;
   display: flex; gap: 8px; align-items: center; width: 250px;
-  background: #1c1f23; color: #fff; border-radius: 10px; padding: 8px; font-size: 12px;
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25);
+  background: var(--tooltip-bg); color: var(--tooltip-text); border-radius: 10px; padding: 8px; font-size: 12px;
+  box-shadow: var(--shadow);
 }
 .tip.flip { transform: translate(calc(-100% - 12px), -50%); }
 .tip img { width: 48px; height: 48px; border-radius: 6px; object-fit: cover; flex: none; }

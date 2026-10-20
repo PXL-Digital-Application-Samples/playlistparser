@@ -47,11 +47,12 @@ const peak = computed(() => {
 
 <template>
   <div class="clock">
-    <svg :viewBox="`0 0 ${SIZE} ${SIZE}`" width="240" height="240" role="img"
+    <!-- Margin around the clock face so the hour labels outside it aren't cut off. -->
+    <svg :viewBox="`-24 -12 ${SIZE + 48} ${SIZE + 24}`" :width="SIZE + 48" :height="SIZE + 24" class="clock-svg" role="img"
       :aria-label="`Recent plays by hour of day; most plays between ${peak}`">
       <circle :cx="C" :cy="C" :r="OUTER" fill="none" stroke="var(--border)" stroke-dasharray="2 4" />
       <circle :cx="C" :cy="C" :r="INNER" fill="none" stroke="var(--border)" />
-      <path v-for="b in bars" :key="b.h" v-show="b.d" :d="b.d || ''" fill="#1db954">
+      <path v-for="b in bars" :key="b.h" v-show="b.d" :d="b.d || ''" :style="{ fill: 'var(--accent)' }">
         <title>{{ String(b.h).padStart(2, '0') }}:00 — {{ plural(b.n, 'play') }}</title>
       </path>
       <text v-for="l in labels" :key="l.h" :x="l.x" :y="l.y" text-anchor="middle" class="hour">{{ String(l.h).padStart(2, '0') }}h</text>
@@ -67,6 +68,7 @@ const peak = computed(() => {
 
 <style scoped>
 .clock { display: flex; flex-wrap: wrap; align-items: center; gap: 16px; }
+.clock-svg { max-width: 100%; height: auto; }
 .clock-text { flex: 1; min-width: 180px; }
 .clock-text p { margin: 4px 0; }
 .hour { font-size: 10px; fill: var(--muted); }

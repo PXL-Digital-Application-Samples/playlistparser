@@ -1,14 +1,22 @@
 <script setup>
 // Ranked cover grid: #1 gets a big tile, the rest smaller ones.
 defineProps({
-  items: { type: Array, required: true }, // [{ id, name, sub, image, image_lg, url }]
+  items: { type: Array, required: true }, // [{ id, name, sub, image, image_lg, url (Spotify) or to (in-app) }]
 });
 </script>
 
 <template>
   <ol class="grid" aria-label="Ranked by Spotify">
     <li v-for="(it, i) in items" :key="it.id" class="cell" :class="{ hero: i === 0 }">
-      <a :href="it.url" target="_blank" rel="noopener noreferrer" class="sp-cover cover-a" :title="`Open ${it.name} in Spotify`">
+      <component
+        :is="it.to ? 'router-link' : 'a'"
+        :to="it.to || undefined"
+        :href="it.to ? undefined : it.url"
+        :target="it.to ? undefined : '_blank'"
+        :rel="it.to ? undefined : 'noopener noreferrer'"
+        class="sp-cover cover-a"
+        :title="it.to ? it.name : `Open ${it.name} in Spotify`"
+      >
       <img
         v-if="it.image"
         :src="i === 0 && it.image_lg ? it.image_lg : it.image"
@@ -24,7 +32,7 @@ defineProps({
         <strong>{{ it.name }}</strong>
         <span>{{ it.sub }}</span>
       </div>
-      </a>
+      </component>
     </li>
   </ol>
 </template>
@@ -37,7 +45,7 @@ defineProps({
   grid-auto-rows: 1fr;
   gap: 6px;
 }
-.cell { position: relative; aspect-ratio: 1; border-radius: 8px; overflow: hidden; background: #111; }
+.cell { position: relative; aspect-ratio: 1; border-radius: 8px; overflow: hidden; background: var(--cover-bg); }
 .cell.hero { grid-column: span 2; grid-row: span 2; }
 .cover-a { position: absolute; inset: 0; }
 .cover-a:focus-visible { outline: 3px solid var(--focus); outline-offset: -3px; border-radius: 8px; }

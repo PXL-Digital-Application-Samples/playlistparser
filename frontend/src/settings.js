@@ -20,9 +20,19 @@ const saved = read();
 // Liked Songs numbers, so they always agree.
 export const lens = ref(saved.lens === 'all' ? 'all' : 'handpicked');
 
-watch([lens], () => {
+// 'system' follows the device; 'dark' / 'light' override it (theme.css).
+export const theme = ref(['dark', 'light'].includes(saved.theme) ? saved.theme : 'system');
+
+function applyTheme(t) {
+  if (t === 'system') delete document.documentElement.dataset.theme;
+  else document.documentElement.dataset.theme = t;
+}
+applyTheme(theme.value);
+
+watch([lens, theme], () => {
+  applyTheme(theme.value);
   try {
-    localStorage.setItem(KEY, JSON.stringify({ ...read(), lens: lens.value }));
+    localStorage.setItem(KEY, JSON.stringify({ ...read(), lens: lens.value, theme: theme.value }));
   } catch {
     // Not remembered; the setting still applies for this visit.
   }

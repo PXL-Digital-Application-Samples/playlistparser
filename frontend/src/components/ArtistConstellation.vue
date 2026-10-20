@@ -1,7 +1,7 @@
 <script setup>
 import { ref, computed } from 'vue';
 import { forceSimulation, forceLink, forceManyBody, forceCenter, forceCollide, forceX, forceY } from 'd3-force';
-import { spotifyUrl } from '../api.js';
+import { useRouter } from 'vue-router';
 import { familyColor } from '../families.js';
 
 // Your top artists as a network: lines = Last.fm says they're similar, dot
@@ -51,7 +51,14 @@ const neighbours = computed(() => {
   return set;
 });
 const dim = (id) => hover.value && !neighbours.value.has(id);
-const href = (n) => (n.spotify_id ? spotifyUrl('artist', n.spotify_id) : `https://open.spotify.com/search/${encodeURIComponent(n.name)}`);
+// Your artists open their page in the app; suggestions open a Spotify search.
+const router = useRouter();
+const href = (n) => (n.spotify_id && !n.ghost ? `/artist/${n.spotify_id}` : `https://open.spotify.com/search/${encodeURIComponent(n.name)}`);
+function open(e, n) {
+  if (n.ghost || !n.spotify_id || e.metaKey || e.ctrlKey) return;
+  e.preventDefault();
+  router.push(href(n));
+}
 const short = (s) => (s.length > 16 ? `${s.slice(0, 15)}…` : s);
 </script>
 
@@ -63,7 +70,7 @@ const short = (s) => (s.length > 16 ? `${s.slice(0, 15)}…` : s);
         v-for="l in layout.links"
         :key="l.source.id + l.target.id"
         :x1="l.source.x" :y1="l.source.y" :x2="l.target.x" :y2="l.target.y"
-        :stroke="l.ghost ? '#b8bcc2' : '#8f96a0'"
+        :style="{ stroke: l.ghost ? 'var(--faint)' : 'var(--border-strong)' }"
         :stroke-dasharray="l.ghost ? '3 3' : null"
         :stroke-width="0.6 + l.match * 1.8"
         :opacity="dim(l.source.id) || dim(l.target.id) ? 0.08 : 0.55"
@@ -72,9 +79,10 @@ const short = (s) => (s.length > 16 ? `${s.slice(0, 15)}…` : s);
         v-for="n in layout.nodes"
         :key="n.id"
         :href="href(n)"
-        target="_blank"
-        rel="noopener noreferrer"
+        :target="n.ghost ? '_blank' : null"
+        :rel="n.ghost ? 'noopener noreferrer' : null"
         tabindex="-1"
+        @click="open($event, n)"
         :opacity="dim(n.id) ? 0.2 : 1"
         @mouseenter="hover = n.id"
         @mouseleave="hover = null"
@@ -84,8 +92,7 @@ const short = (s) => (s.length > 16 ? `${s.slice(0, 15)}…` : s);
         <title>{{ n.ghost ? `${n.name}: similar to several of your artists (not in your Liked Songs)` : `${n.name}: ${n.count} likes` }}</title>
         <circle
           :cx="n.x" :cy="n.y" :r="n.r"
-          :style="{ fill: n.ghost ? 'var(--surface)' : familyColor(n.family) }"
-          :stroke="n.ghost ? '#7f6bd8' : 'white'"
+          :style="{ fill: n.ghost ? 'var(--surface)' : familyColor(n.family), stroke: n.ghost ? 'var(--accent-text)' : 'var(--surface)' }"
           :stroke-width="n.ghost ? 1.6 : 1.2"
           :stroke-dasharray="n.ghost ? '3 2' : null"
         />
@@ -99,14 +106,14 @@ const short = (s) => (s.length > 16 ? `${s.slice(0, 15)}…` : s);
       </a>
     </svg>
     <p class="muted small">
-      Lines: Last.fm calls them similar. Dot size: your likes. Dashed dots: artists you don't have yet, similar to two or more of yours. Click to open in Spotify.
+      Lines: Last.fm calls them similar. Dot size: your likes. Dashed dots: artists you don't have yet, similar to two or more of yours. Click an artist for their page; click a suggestion to look it up on Spotify.
     </p>
   </div>
 </template>
 
 <style scoped>
 .label { font-size: 10.5px; fill: var(--text); paint-order: stroke; stroke: var(--surface); stroke-width: 3px; stroke-linejoin: round; }
-.label.ghost { fill: #5a49b8; font-style: italic; }
+.label.ghost { fill: var(--accent-text); font-style: italic; }
 .label.strong { font-weight: 700; font-size: 12px; }
 a { cursor: pointer; }
 .small { font-size: 13px; }

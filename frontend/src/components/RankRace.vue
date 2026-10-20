@@ -1,6 +1,6 @@
 <script setup>
 import { ref, computed } from 'vue';
-import { spotifyUrl } from '../api.js';
+import { useRouter } from 'vue-router';
 
 // Your top artists in three periods, oldest to newest, with lines linking the
 // same artist across columns. Hover (or focus) an artist to follow them.
@@ -47,6 +47,13 @@ const isNew = (i, id) => i > 0 && rankIn(cols.value[i - 1], id) === -1;
 const hovered = ref(null);
 const width = 3 * COL_W + 2 * GAP;
 const height = computed(() => HEAD + props.size * ROW);
+// Artists open their page in the app.
+const router = useRouter();
+function open(e, a) {
+  if (e.metaKey || e.ctrlKey) return;
+  e.preventDefault();
+  router.push(`/artist/${a.id}`);
+}
 const short = (s) => (s.length > 21 ? `${s.slice(0, 20)}…` : s);
 </script>
 
@@ -60,7 +67,7 @@ const short = (s) => (s.length > 21 ? `${s.slice(0, 20)}…` : s);
         :key="l.d"
         :d="l.d"
         fill="none"
-        :stroke="l.same ? '#adb5bd' : l.up ? '#1db954' : '#e8590c'"
+        :style="{ stroke: l.same ? 'var(--faint)' : l.up ? 'var(--good)' : 'var(--danger-text)' }"
         :stroke-width="hovered === l.id ? 3 : 1.5"
         :opacity="hovered && hovered !== l.id ? 0.12 : 0.85"
       />
@@ -71,9 +78,8 @@ const short = (s) => (s.length > 21 ? `${s.slice(0, 20)}…` : s);
         <a
           v-for="(a, r) in c.artists"
           :key="a.id"
-          :href="spotifyUrl('artist', a.id)"
-          target="_blank"
-          rel="noopener noreferrer"
+          :href="`/artist/${a.id}`"
+          @click="open($event, a)"
           tabindex="-1"
           class="artist"
           :opacity="hovered && hovered !== a.id ? 0.3 : 1"
@@ -90,9 +96,9 @@ const short = (s) => (s.length > 21 ? `${s.slice(0, 20)}…` : s);
       </g>
     </svg>
     <p class="muted small legend">
-      <span class="key" style="background:#1db954"></span> rising
-      <span class="key" style="background:#e8590c"></span> falling
-      <span class="key" style="background:#adb5bd"></span> same rank
+      <span class="key" style="background: var(--good)"></span> rising
+      <span class="key" style="background: var(--danger-text)"></span> falling
+      <span class="key" style="background: var(--faint)"></span> same rank
       · "new" = not in the previous period's top {{ size }}. Spotify only shares rankings, not play counts.
     </p>
   </div>
@@ -104,7 +110,7 @@ const short = (s) => (s.length > 21 ? `${s.slice(0, 20)}…` : s);
 .rank { font-size: 11px; fill: var(--muted); font-variant-numeric: tabular-nums; }
 .name { font-size: 13px; fill: var(--text); }
 .name.strong { font-weight: 700; }
-.new { font-size: 10px; fill: #0b7a3b; font-weight: 600; }
+.new { font-size: 10px; fill: var(--good); font-weight: 600; }
 .artist { cursor: pointer; }
 .artist:hover .name { text-decoration: underline; }
 .legend { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 6px; }

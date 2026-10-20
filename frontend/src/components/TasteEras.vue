@@ -65,10 +65,9 @@ const years = computed(() => props.rows.map((r, i) => ({ year: r.year, x: PAD + 
         v-for="l in layers"
         :key="l.f"
         :d="l.d"
-        :style="{ fill: familyColor(l.f) }"
+        :style="{ fill: familyColor(l.f), stroke: 'var(--surface)' }"
         :fill-opacity="hover && hover !== l.f ? 0.25 : 0.88"
-        stroke="white"
-        stroke-width="0.8"
+        stroke-width="1.5"
         @mouseenter="hover = l.f"
         @mouseleave="hover = null"
       >

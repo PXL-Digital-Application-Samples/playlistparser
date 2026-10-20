@@ -20,7 +20,7 @@ watch(() => props.years, (ys) => { if (!ys.includes(year.value)) year.value = ys
 const CELL = 12;
 const GAP = 3;
 const STEP = CELL + GAP;
-const SHADES = ['#ebedf0', '#b7e4c7', '#74c69d', '#2d9f5a', '#14532d'];
+const SHADES = ['var(--heat-0)', 'var(--seq-1)', 'var(--seq-2)', 'var(--seq-4)', 'var(--seq-5)'];
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
 const grid = computed(() => {
@@ -109,13 +109,13 @@ const level = (n) => (n === 0 ? 0 : n === 1 ? 1 : n <= 3 ? 2 : n <= 9 ? 3 : 4);
   font: inherit; font-size: 12px; padding: 3px 9px; border-radius: 999px;
   border: 1px solid var(--border); background: var(--surface); color: var(--text); cursor: pointer;
 }
-.year[aria-pressed='true'] { background: var(--text); color: #fff; border-color: var(--text); }
+.year[aria-pressed='true'] { background: var(--text); color: var(--bg); border-color: var(--text); }
 .cal-scroll { overflow-x: auto; margin-top: 10px; padding-bottom: 70px; margin-bottom: -60px; }
 .cal-inner { position: relative; }
 .tip {
   position: absolute; z-index: 5; width: 160px; pointer-events: none;
-  background: #1c1f23; color: #fff; border-radius: 8px; padding: 6px; font-size: 12px;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
+  background: var(--tooltip-bg); color: var(--tooltip-text); border-radius: 8px; padding: 6px; font-size: 12px;
+  box-shadow: var(--shadow);
 }
 .tip-covers { display: flex; gap: 4px; margin-bottom: 4px; }
 .tip-covers img { width: 46px; height: 46px; border-radius: 4px; object-fit: cover; }

@@ -71,6 +71,10 @@ export const endpoints = {
   startEnrichment: () => post('/library/enrichment'),
   insightsDeep: (lens) => get(`/insights/deep?lens=${enc(lens)}`),
   startLibrarySync: () => post('/library/sync'),
+  libraryOverview: () => get('/library/overview'),
+  libraryDuplicates: () => get('/library/duplicates'),
+  artist: (id) => get(`/library/artists/${enc(id)}`),
+  album: (id) => get(`/library/albums/${enc(id)}`),
 };
 
 // Human-readable messages for API error codes.

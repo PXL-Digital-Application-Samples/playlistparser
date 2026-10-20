@@ -17,7 +17,7 @@ const W = 680, H = 330;
 const shapes = feature(world, world.objects.countries).features.filter((f) => f.properties.name !== 'Antarctica');
 const projection = geoNaturalEarth1().fitSize([W, H], { type: 'FeatureCollection', features: shapes });
 const path = geoPath(projection);
-const SHADES = ['#d3f2df', '#9fdcb6', '#5cc487', '#1f9d55', '#0b6b37'];
+const SHADES = ['var(--seq-1)', 'var(--seq-2)', 'var(--seq-3)', 'var(--seq-4)', 'var(--seq-5)'];
 const level = (n) => (n >= 100 ? 4 : n >= 30 ? 3 : n >= 10 ? 2 : n >= 3 ? 1 : 0);
 
 const byNumeric = computed(() => {
@@ -81,8 +81,8 @@ function move(e, p) {
 .tip {
   position: absolute; z-index: 5; transform: translate(12px, 12px); pointer-events: none; max-width: 240px;
   display: flex; flex-direction: column; gap: 2px;
-  background: #1c1f23; color: #fff; border-radius: 8px; padding: 8px 10px; font-size: 12px;
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25);
+  background: var(--tooltip-bg); color: var(--tooltip-text); border-radius: 8px; padding: 8px 10px; font-size: 12px;
+  box-shadow: var(--shadow);
 }
 .tip .artists { opacity: 0.8; }
 .top { list-style: none; margin: 0; padding: 0; font-size: 13px; }
