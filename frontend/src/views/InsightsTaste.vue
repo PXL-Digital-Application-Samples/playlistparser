@@ -10,6 +10,7 @@ import StoryCards from '../components/StoryCards.vue';
 import CoverWall from '../components/CoverWall.vue';
 import BarList from '../components/BarList.vue';
 import ChartFrame from '../components/ChartFrame.vue';
+import { heroName } from '../transitions.js';
 import ShareButton from '../components/ShareButton.vue';
 
 const props = defineProps({ summary: Object, deep: Object, lensKey: String });
@@ -152,7 +153,7 @@ const decadeRows = computed(() => {
           <ul v-else class="album-list">
             <li v-for="a in lens.depth.complete_albums" :key="a.name + a.artist">
               <router-link :to="`/album/${a.id}`" class="album-row">
-                <img v-if="a.image" :src="a.image" alt="" loading="lazy" />
+                <img v-if="a.image" :src="a.image" alt="" loading="lazy" :style="heroName(`/album/${a.id}`)" />
                 <span class="album-text"><strong>{{ a.name }}</strong><span>{{ a.artist }}</span></span>
                 <span class="count">{{ a.liked }}/{{ a.total }}</span>
               </router-link>

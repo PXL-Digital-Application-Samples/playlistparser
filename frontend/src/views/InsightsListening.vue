@@ -7,6 +7,7 @@ import RankRace from '../components/RankRace.vue';
 import ListeningClock from '../components/ListeningClock.vue';
 import ChartFrame from '../components/ChartFrame.vue';
 import BarList from '../components/BarList.vue';
+import { heroName } from '../transitions.js';
 
 const props = defineProps({ summary: Object, collection: Object, loadCollection: Function });
 const loginUrl = inject('loginUrl');
@@ -137,7 +138,7 @@ const col = computed(() => props.collection?.data);
       <ul class="album-strip" role="list">
         <li v-for="a in col.albums.recent" :key="a.id">
           <router-link :to="`/album/${a.id}`" class="album-card">
-            <img v-if="a.image" :src="a.image" alt="" loading="lazy" />
+            <img v-if="a.image" :src="a.image" alt="" loading="lazy" :style="heroName(`/album/${a.id}`)" />
             <strong>{{ a.name }}</strong>
             <span>{{ a.artist }} · saved {{ a.added_at?.slice(0, 10) }}</span>
           </router-link>

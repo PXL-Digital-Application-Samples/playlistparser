@@ -6,6 +6,7 @@ import { loadPlaylists, plural } from '../playlistCache.js';
 import { exportJob, startExportAll } from '../status.js';
 import Icon from '../components/Icon.vue';
 import LikedCover from '../components/LikedCover.vue';
+import { heroName } from '../transitions.js';
 
 const props = defineProps({ me: Object, meLoading: Boolean });
 const route = useRoute();
@@ -134,7 +135,7 @@ const exporting = computed(() => exportJob.value && !['completed', 'error'].incl
       <ul v-if="visible.length || showLiked" v-reveal="'cascade'" class="grid" role="list">
         <li v-if="showLiked">
           <router-link v-if="liked.analyzable" to="/playlist/liked" class="card card-link">
-            <LikedCover class="cover" :size="0" />
+            <LikedCover class="cover" :size="0" :style="heroName('/playlist/liked')" />
             <span class="card-title">Liked Songs</span>
             <span class="card-meta">{{ plural(liked.tracks_total ?? 0, 'track') }}</span>
           </router-link>
@@ -146,7 +147,7 @@ const exporting = computed(() => exportJob.value && !['completed', 'error'].incl
         </li>
         <li v-for="p in visible" :key="p.id">
           <router-link v-if="p.tracks_total !== 0" :to="`/playlist/${p.id}`" class="card card-link">
-            <img v-if="p.image" :src="p.image" alt="" class="cover" loading="lazy" />
+            <img v-if="p.image" :src="p.image" alt="" class="cover" loading="lazy" :style="heroName(`/playlist/${p.id}`)" />
             <span v-else class="cover cover-empty"><Icon name="music" :size="28" /></span>
             <span class="card-title">{{ p.name }}</span>
             <span class="card-meta">

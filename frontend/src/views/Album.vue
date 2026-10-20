@@ -6,6 +6,7 @@ import { plural } from '../playlistCache.js';
 import { setTitle } from '../title.js';
 import { coverTint } from '../coverTint.js';
 import { syncVersion } from '../status.js';
+import { heroName, heroFallback } from '../transitions.js';
 import Icon from '../components/Icon.vue';
 import BarList from '../components/BarList.vue';
 
@@ -51,7 +52,7 @@ const TYPES = { album: 'Album', single: 'Single', compilation: 'Compilation' };
       <div class="hero-inner">
         <button class="btn btn-link back" @click="router.back()"><Icon name="arrow-left" :size="16" /> Back</button>
         <div class="hero-row">
-          <img v-if="album?.image_lg || album?.image" :src="album.image_lg || album.image" alt="" class="art" />
+          <img v-if="album?.image_lg || album?.image || heroFallback(`/album/${id}`)" :src="album?.image_lg || album?.image || heroFallback(`/album/${id}`)" alt="" class="art" :style="heroName(`/album/${id}`)" />
           <span v-else class="art placeholder"><Icon name="disc" :size="40" /></span>
           <div class="hero-text">
             <p class="eyebrow">{{ TYPES[album?.album_type] || 'Album' }}<template v-if="album?.release_date"> · {{ album.release_date.slice(0, 4) }}</template></p>

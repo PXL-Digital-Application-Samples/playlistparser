@@ -8,6 +8,7 @@ import { highlightCards } from '../highlights.js';
 import { INSIGHT_TABS } from '../nav.js';
 import Icon from '../components/Icon.vue';
 import StoryCards from '../components/StoryCards.vue';
+import { heroName } from '../transitions.js';
 
 const props = defineProps({ me: Object, meLoading: Boolean });
 
@@ -120,7 +121,7 @@ const EXPLORE = {
       <ul v-reveal="'cascade'" class="cover-row" role="list">
         <li v-for="p in overview.recent_playlists" :key="p.id">
           <router-link :to="`/playlist/${p.id}`" class="cover-card">
-            <img v-if="p.image" :src="p.image" alt="" loading="lazy" />
+            <img v-if="p.image" :src="p.image" alt="" loading="lazy" :style="heroName(`/playlist/${p.id}`)" />
             <span v-else class="noimg"><Icon name="music" :size="24" /></span>
             <strong>{{ p.name }}</strong>
             <span :title="`Newest song added ${p.last_added.slice(0, 10)}`">{{ plural(p.tracks, 'track') }} · song added {{ ago(p.last_added) }}</span>
@@ -137,7 +138,7 @@ const EXPLORE = {
       <ul v-reveal="'cascade'" class="artist-row" role="list">
         <li v-for="(a, i) in topArtists" :key="a.id">
           <router-link :to="`/artist/${a.id}`" class="artist-card">
-            <img v-if="a.image" :src="a.image" alt="" loading="lazy" />
+            <img v-if="a.image" :src="a.image" alt="" loading="lazy" :style="heroName(`/artist/${a.id}`)" />
             <span v-else class="noimg round"><Icon name="mic" :size="22" /></span>
             <strong>{{ a.name }}</strong>
             <span>#{{ i + 1 }} · past 4 weeks</span>

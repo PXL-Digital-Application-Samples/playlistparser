@@ -1,5 +1,6 @@
 <script setup>
 import { computed } from 'vue';
+import { heroName } from '../transitions.js';
 
 // Treemap of album covers: tile area = number of likes for that album.
 const props = defineProps({
@@ -78,6 +79,7 @@ const tiles = computed(() => {
     <figure v-for="t in tiles" :key="t.id" class="wall-tile" :class="t.size" :style="t.style" role="listitem">
       <router-link :to="`/album/${t.id}`" class="sp-cover tile-a" :title="t.name">
       <img
+        :style="heroName(`/album/${t.id}`)"
         :src="t.image"
         :srcset="t.image_lg ? `${t.image} 300w, ${t.image_lg} 640w` : undefined"
         :sizes="t.sizes"

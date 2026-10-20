@@ -7,6 +7,7 @@ import { lens } from '../settings.js';
 import { setTitle } from '../title.js';
 import Icon from '../components/Icon.vue';
 import LikedCover from '../components/LikedCover.vue';
+import { heroName } from '../transitions.js';
 import BarList from '../components/BarList.vue';
 import LensToggle from '../components/LensToggle.vue';
 
@@ -280,8 +281,8 @@ function exportToCsv() {
 
     <!-- Header -->
     <header class="pl-head">
-      <LikedCover v-if="id === 'liked'" :size="136" class="pl-cover" />
-      <img v-else-if="info?.image" :src="info.image" alt="" class="pl-cover" />
+      <LikedCover v-if="id === 'liked'" :size="136" class="pl-cover" :style="heroName(`/playlist/${id}`)" />
+      <img v-else-if="info?.image" :src="info.image" alt="" class="pl-cover" :style="heroName(`/playlist/${id}`)" />
       <div v-else class="pl-cover skeleton" :class="{ 'no-anim': info }"></div>
       <div class="pl-title">
         <h1 v-if="info?.name">{{ info.name }}</h1>

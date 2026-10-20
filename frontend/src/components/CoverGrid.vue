@@ -1,4 +1,5 @@
 <script setup>
+import { heroName } from '../transitions.js';
 // Ranked cover grid: #1 gets a big tile, the rest smaller ones.
 defineProps({
   items: { type: Array, required: true }, // [{ id, name, sub, image, image_lg, url (Spotify) or to (in-app) }]
@@ -19,6 +20,7 @@ defineProps({
       >
       <img
         v-if="it.image"
+        :style="it.to ? heroName(it.to) : null"
         :src="i === 0 && it.image_lg ? it.image_lg : it.image"
         :srcset="it.image_lg ? `${it.image} 300w, ${it.image_lg} 640w` : undefined"
         :sizes="i === 0 ? '(max-width: 640px) 50vw, 34vw' : '(max-width: 640px) 25vw, 17vw'"

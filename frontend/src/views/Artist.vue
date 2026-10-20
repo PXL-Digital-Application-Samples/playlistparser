@@ -6,6 +6,7 @@ import { plural } from '../playlistCache.js';
 import { setTitle } from '../title.js';
 import { coverTint } from '../coverTint.js';
 import { syncVersion } from '../status.js';
+import { heroName, heroFallback } from '../transitions.js';
 import Icon from '../components/Icon.vue';
 import BarList from '../components/BarList.vue';
 
@@ -35,7 +36,7 @@ watch(() => [props.me, props.id], load, { immediate: true });
 watch(syncVersion, load);
 watch(() => artist.value?.name, (n) => setTitle(n || 'Artist'), { immediate: true });
 
-const picture = computed(() => artist.value?.photo?.image_lg || artist.value?.photo?.image || artist.value?.image || null);
+const picture = computed(() => artist.value?.photo?.image_lg || artist.value?.photo?.image || artist.value?.image || heroFallback(`/artist/${props.id}`));
 watch(picture, async (url) => { tint.value = await coverTint(url); }, { immediate: true });
 
 const fmtMonth = (iso) => (iso ? new Date(iso).toLocaleDateString(undefined, { month: 'long', year: 'numeric' }) : null);
@@ -57,7 +58,7 @@ watch(() => props.id, () => (songsShown.value = SONGS_STEP));
       <div class="hero-inner">
         <button class="btn btn-link back" @click="router.back()"><Icon name="arrow-left" :size="16" /> Back</button>
         <div class="hero-row">
-          <img v-if="picture" :src="picture" alt="" class="portrait" />
+          <img v-if="picture" :src="picture" alt="" class="portrait" :style="heroName(`/artist/${id}`)" />
           <span v-else class="portrait placeholder"><Icon name="mic" :size="40" /></span>
           <div class="hero-text">
             <p class="eyebrow">Artist</p>
@@ -140,7 +141,7 @@ watch(() => props.id, () => (songsShown.value = SONGS_STEP));
             <ul class="mini-list" role="list">
               <li v-for="a in artist.albums.slice(0, 8)" :key="a.id">
                 <router-link :to="`/album/${a.id}`" class="mini-row">
-                  <img v-if="a.image" :src="a.image" alt="" loading="lazy" />
+                  <img v-if="a.image" :src="a.image" alt="" loading="lazy" :style="heroName(`/album/${a.id}`)" />
                   <span class="mini-text"><strong>{{ a.name }}</strong><span>{{ a.release_date?.slice(0, 4) }} · {{ plural(a.songs, 'song') }} you have</span></span>
                 </router-link>
               </li>

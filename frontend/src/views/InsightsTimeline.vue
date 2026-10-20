@@ -3,6 +3,7 @@ import { computed } from 'vue';
 import { plural } from '../playlistCache.js';
 import LikeCalendar from '../components/LikeCalendar.vue';
 import ChartFrame from '../components/ChartFrame.vue';
+import { heroName } from '../transitions.js';
 
 const props = defineProps({ summary: Object, lensKey: String });
 
@@ -40,7 +41,7 @@ const monthRows = computed(() => (lens.value?.over_time.months || []).map((m) =>
       <ul v-reveal="'cascade'" class="eras" role="list">
         <li v-for="e in lens.over_time.eras" :key="e.year" class="era">
           <div class="era-covers">
-            <router-link v-for="c in e.covers" :key="c.image" :to="`/album/${c.id}`" class="sp-cover" :title="c.name"><img :src="c.image" :alt="c.name" loading="lazy" /></router-link>
+            <router-link v-for="c in e.covers" :key="c.image" :to="`/album/${c.id}`" class="sp-cover" :title="c.name"><img :src="c.image" :alt="c.name" loading="lazy" :style="heroName(`/album/${c.id}`)" /></router-link>
           </div>
           <p class="era-year">{{ e.year }} <span>{{ plural(e.total, unit) }}</span></p>
           <p class="era-artists">
@@ -81,7 +82,7 @@ const monthRows = computed(() => (lens.value?.over_time.months || []).map((m) =>
       <ul class="album-strip" role="list">
         <li v-for="a in summary.album_saves.biggest" :key="a.name + a.added_at">
           <router-link :to="`/album/${a.id}`" class="album-card">
-            <img v-if="a.image" :src="a.image" alt="" loading="lazy" />
+            <img v-if="a.image" :src="a.image" alt="" loading="lazy" :style="heroName(`/album/${a.id}`)" />
             <strong>{{ a.name }}</strong>
             <span>{{ a.artist }} · {{ a.songs }} songs · {{ a.added_at.slice(0, 10) }}</span>
           </router-link>
