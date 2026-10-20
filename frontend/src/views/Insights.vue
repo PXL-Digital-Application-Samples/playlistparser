@@ -1,5 +1,5 @@
 <script setup>
-import { ref, reactive, computed, watch, inject } from 'vue';
+import { ref, reactive, computed, watch, inject, onBeforeUnmount } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { endpoints, describeError, spotifyUrl } from '../api.js';
 import { plural } from '../playlistCache.js';
@@ -12,6 +12,11 @@ import TasteFingerprint from '../components/TasteFingerprint.vue';
 import CoverWall from '../components/CoverWall.vue';
 import CoverGrid from '../components/CoverGrid.vue';
 import SyncStatus from '../components/SyncStatus.vue';
+import SoundMap from '../components/SoundMap.vue';
+import TasteEras from '../components/TasteEras.vue';
+import MusicAtlas from '../components/MusicAtlas.vue';
+import ArtistConstellation from '../components/ArtistConstellation.vue';
+import { familyColor } from '../families.js';
 
 const props = defineProps({ me: Object, meLoading: Boolean });
 const loginUrl = inject('loginUrl');
@@ -38,7 +43,40 @@ watch(() => props.me, load, { immediate: true });
 
 // ---- Lens: hand-picked songs only, or including whole-album saves -------------
 const lensKey = ref(route.query.lens === 'all' ? 'all' : 'handpicked');
-watch(lensKey, (k) => router.replace({ query: k === 'all' ? { lens: 'all' } : {} }));
+watch(lensKey, (k) => {
+  router.replace({ query: k === 'all' ? { lens: 'all' } : {} });
+  loadDeep();
+});
+
+// ---- Deep dive: Liked Songs + Deezer / Last.fm / MusicBrainz enrichment -------
+const deep = ref(null);
+const deepError = ref(null);
+let deepTimer = null;
+let enrichResumed = false;
+const ENRICH_LABELS = { deezer: 'Tempo · Deezer', lastfm: 'Tags & similar artists · Last.fm', musicbrainz: 'Origins & composers · MusicBrainz' };
+const enrichRunning = computed(() => Object.values(deep.value?.enrichment || {}).some((s) => s.status === 'running'));
+async function loadDeep() {
+  clearTimeout(deepTimer);
+  if (!props.me) return;
+  try {
+    deep.value = await endpoints.insightsDeep(lensKey.value);
+    deepError.value = null;
+    const e = deep.value.enrichment || {};
+    // Start sources that never ran, and resume ones that stalled (e.g. the
+    // API restarted mid-run). Once per visit, so a failing source can't loop.
+    if (deep.value.status === 'ok' && !enrichResumed && Object.values(e).some((s) => s.status === 'never' || s.status === 'error')) {
+      enrichResumed = true;
+      await endpoints.startEnrichment();
+      deepTimer = setTimeout(loadDeep, 3000);
+      return;
+    }
+    if (enrichRunning.value) deepTimer = setTimeout(loadDeep, 8000); // refresh partial results
+  } catch (e) {
+    deepError.value = describeError(e);
+  }
+}
+watch(() => props.me, loadDeep, { immediate: true });
+onBeforeUnmount(() => clearTimeout(deepTimer));
 const lens = computed(() => summary.value?.lenses?.[lensKey.value] ?? null);
 const lensUnit = computed(() => (lensKey.value === 'all' ? 'like' : 'song'));
 
@@ -129,8 +167,8 @@ const playItems = computed(() => {
   const data = top.value?.[playRange.value];
   if (!data) return [];
   return playKind.value === 'tracks'
-    ? data.tracks.slice(0, 13).map((t) => ({ id: t.id, name: t.name, sub: names(t), image: t.image, image_lg: t.image_lg, url: spotifyUrl('track', t.id) }))
-    : data.artists.slice(0, 13).map((a) => ({ id: a.id, name: a.name, sub: a.genres.slice(0, 2).join(', ') || 'artist', image: a.image, image_lg: a.image_lg, url: spotifyUrl('artist', a.id) }));
+    ? data.tracks.slice(0, 15).map((t) => ({ id: t.id, name: t.name, sub: names(t), image: t.image, image_lg: t.image_lg, url: spotifyUrl('track', t.id) }))
+    : data.artists.slice(0, 15).map((a) => ({ id: a.id, name: a.name, sub: a.genres.slice(0, 2).join(', ') || 'artist', image: a.image, image_lg: a.image_lg, url: spotifyUrl('artist', a.id) }));
 });
 
 // ---- Songs added per month ----------------------------------------------------------
@@ -150,6 +188,7 @@ const monthChart = computed(() => {
 // ---- Lazily loaded sections ----------------------------------------------------
 // A finished sync changes the data: reload the summary and any opened section.
 async function onSynced() {
+  loadDeep();
   await load();
   for (const name of Object.keys(lazy)) if (lazy[name].data) fetchSection(name);
 }
@@ -286,6 +325,53 @@ async function fetchSection(name) {
         </div>
       </section>
 
+      <!-- Deep dive -->
+      <section v-if="deep?.status === 'ok'" class="block deep" aria-labelledby="h-deep">
+        <div class="block-head">
+          <h2 id="h-deep">Deep dive</h2>
+          <p class="muted small">Your likes combined with public music data.</p>
+        </div>
+        <ul v-if="enrichRunning" class="enrich" aria-live="polite">
+          <li v-for="(s, key) in deep.enrichment" :key="key" v-show="s.status !== 'disabled'">
+            <span class="dot" :class="s.status"></span>
+            {{ ENRICH_LABELS[key] }}
+            <template v-if="s.status === 'running'"> · {{ s.done.toLocaleString() }} / {{ s.total.toLocaleString() }}
+              <span class="track"><span class="fill" :style="{ width: `${s.total ? (s.done / s.total) * 100 : 0}%` }"></span></span>
+            </template>
+            <template v-else-if="s.status === 'completed'"> · done</template>
+          </li>
+          <li class="muted small">Results fill in as data arrives; the first run can take 10–15 minutes, later runs only look up what's new.</li>
+        </ul>
+
+        <div class="deep-grid">
+          <article class="panel wide">
+            <h3>Sound map</h3>
+            <p class="muted small">Every song with a known tempo: when it was released, how fast it is, how popular it is.</p>
+            <SoundMap v-if="deep.sound_map.points.length" :points="deep.sound_map.points" />
+            <p v-else class="muted">Waiting for tempo data from Deezer…</p>
+            <p class="muted small">Tempo known for {{ deep.sound_map.coverage.with_bpm.toLocaleString() }} of {{ deep.sound_map.coverage.songs.toLocaleString() }} songs.</p>
+          </article>
+
+          <article class="panel wide">
+            <h3>Taste eras</h3>
+            <TasteEras v-if="deep.eras.rows.length" :families="deep.eras.families" :rows="deep.eras.rows" />
+            <p v-else class="muted">Waiting for tags from Last.fm…</p>
+          </article>
+
+          <article class="panel wide">
+            <h3>Music atlas</h3>
+            <MusicAtlas v-if="deep.atlas.countries.length" :countries="deep.atlas.countries" :known="deep.atlas.known" :total="deep.atlas.total" />
+            <p v-else class="muted">Waiting for artist origins from MusicBrainz…</p>
+          </article>
+
+          <article class="panel wide">
+            <h3>Artist constellation</h3>
+            <ArtistConstellation v-if="deep.constellation.nodes.length" :nodes="deep.constellation.nodes" :links="deep.constellation.links" />
+          </article>
+        </div>
+      </section>
+      <div v-if="deepError" class="alert alert-error">{{ deepError }}</div>
+
       <!-- Listening clock + recent -->
       <section v-if="recent?.length" class="block two" aria-labelledby="h-clock">
         <div>
@@ -304,6 +390,32 @@ async function fetchSection(name) {
       </section>
 
       <h2 class="more-title">More</h2>
+
+      <details v-if="deep?.tags?.length" class="more">
+        <summary>Genres (Last.fm tags)</summary>
+        <div class="more-body">
+          <p class="muted small">The three strongest tags of each artist, counted per {{ lensUnit }}.</p>
+          <div class="tag-cloud">
+            <span v-for="t in deep.tags" :key="t.tag" class="tag" :style="{ '--c': familyColor(t.family), fontSize: `${12 + Math.min(14, Math.sqrt(t.count) * 1.6)}px` }">
+              {{ t.tag }} <small>{{ t.count }}</small>
+            </span>
+          </div>
+        </div>
+      </details>
+
+      <details v-if="deep?.classical?.length" class="more">
+        <summary>Classical corner</summary>
+        <div class="more-body">
+          <p class="muted small">Composers and works behind your classical recordings (MusicBrainz), with the performers you liked them by.</p>
+          <div class="composers">
+            <article v-for="c in deep.classical" :key="c.name" class="composer">
+              <h4>{{ c.name }} <span class="muted">{{ plural(c.count, lensUnit) }}</span></h4>
+              <p class="small">{{ c.works.map((w) => w.title).join(' · ') }}</p>
+              <p v-if="c.performers.length" class="muted small">Performed by {{ c.performers.map((p) => p.name).join(', ') }}</p>
+            </article>
+          </div>
+        </div>
+      </details>
 
       <details v-if="summary.album_saves.saves" class="more">
         <summary>Whole-album saves ({{ summary.album_saves.saves }} albums, {{ plural(summary.album_saves.songs, 'song') }})</summary>
@@ -558,6 +670,27 @@ async function fetchSection(name) {
 .recent-cap { display: block; font-size: 11px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-top: 2px; }
 
 .more-title { font-size: 1.1rem; margin: 36px 0 8px; }
+
+.deep-grid { display: grid; grid-template-columns: 1fr; gap: 16px; }
+.panel { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 16px 18px; min-width: 0; }
+.panel h3 { margin: 0 0 2px; font-size: 1.1rem; }
+.panel > p { margin: 0 0 10px; }
+.enrich { list-style: none; margin: 0 0 14px; padding: 10px 14px; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; font-size: 13px; }
+.enrich li { display: flex; align-items: center; gap: 8px; padding: 2px 0; }
+.enrich .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); }
+.enrich .dot.running { background: #1db954; animation: pulse 1s ease-in-out infinite alternate; }
+.enrich .dot.completed { background: #1db954; }
+.enrich .dot.error { background: #e8590c; }
+@keyframes pulse { from { opacity: 0.35; } to { opacity: 1; } }
+.enrich .track { width: 120px; height: 5px; background: var(--surface-muted); border-radius: 3px; overflow: hidden; display: inline-block; }
+.enrich .fill { display: block; height: 100%; background: #1db954; }
+.tag-cloud { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: baseline; }
+.tag { color: var(--c); font-weight: 700; }
+.tag small { color: var(--muted); font-weight: 400; font-size: 11px; }
+.composers { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 12px; }
+.composer { background: var(--surface-muted); border-radius: 12px; padding: 10px 12px; }
+.composer h4 { margin: 0 0 4px; }
+.composer p { margin: 2px 0; }
 .more { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; margin-bottom: 10px; }
 .more summary { cursor: pointer; padding: 14px 18px; font-weight: 600; }
 .more-body { padding: 0 18px 16px; }

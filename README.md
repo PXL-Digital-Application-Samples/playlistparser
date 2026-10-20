@@ -1,21 +1,27 @@
 # PXL Playlist Parser
 
-A Spotify playlist analyzer: a Vue 3 frontend and a Fastify + Prisma API backed by PostgreSQL. Log in with Spotify, get statistics for your playlists, look for duplicates, compare two playlists and export everything to CSV. The app never changes your playlists; it only reads them.
+A Spotify playlist analyzer: a Vue 3 frontend and a Fastify + Prisma API backed by PostgreSQL. Log in with Spotify, get statistics for your playlists and Liked Songs, look for duplicates, explore your taste on the Insights page and export everything to CSV. The app never changes anything on Spotify; it only reads.
 
-<img src="assets/application-overview.png" alt="Application Overview" width="600">
+<img src="assets/home.png" alt="Playlist overview" width="800">
+
+*Screenshots use the built-in demo mode with made-up data (see [Demo mode](#demo-mode)).*
 
 ## Architecture
 
 | Component | Technology | Notes |
 |-----------|------------|-------|
 | `frontend/` | Vue 3, Vue Router, Vite | Static single-page app. Calls the API with cookies (`credentials: 'include'`). |
-| `api/` | Node.js 22+, Fastify 5, Prisma 7 (node-postgres driver adapter) | Spotify OAuth, statistics, CSV export, Last.fm lookups. Stateless: all state lives in PostgreSQL. |
-| Database | PostgreSQL | Users, sessions, encrypted Spotify tokens, export jobs, Last.fm cache. |
+| `api/` | Node.js 22+, Fastify 5, Prisma 7 (node-postgres driver adapter) | Spotify OAuth, statistics, CSV export, library sync, enrichment. Stateless: all state lives in PostgreSQL. |
+| Database | PostgreSQL | Users, sessions, encrypted Spotify tokens, export jobs, synced library, caches of public music data. |
 
-External services the API talks to:
+External services the API talks to (outbound HTTPS):
 
 - **Spotify Web API** (`accounts.spotify.com`, `api.spotify.com`): required.
-- **Last.fm API** (`ws.audioscrobbler.com`): optional, provides listener counts.
+- **Last.fm API** (`ws.audioscrobbler.com`): optional (`LASTFM_API_KEY`): listener counts, artist tags and similar artists.
+- **Deezer API** (`api.deezer.com`): no key: song tempo (BPM).
+- **MusicBrainz** (`musicbrainz.org`): no key: artist countries, composers of classical recordings.
+
+Library-wide data is copied to the database by a background **library sync** (only playlists that changed are re-read), followed by a background **enrichment** job that looks up public data per song and artist. Both report progress in the UI, are shared by all API instances, and are rate-limited per service (MusicBrainz allows one request per second, so the first enrichment of a large library takes 10–15 minutes).
 
 ## Features
 
@@ -25,9 +31,28 @@ External services the API talks to:
 - Duplicate detection: exact duplicates (same Spotify track) and the same recording on different releases (same ISRC).
 - Merge simulation between two playlists (API only: `GET /simulate-merge?a=…&b=…`).
 - CSV export of one playlist, or of all your playlists as a background job with progress.
-- **Insights** page: highlight cards, a like calendar, your top artists over time (4 weeks / 6 months / 1 year), when you listen, and on-demand sections for library growth, music age, artist depth, followed artists, saved albums, podcasts, Liked Songs vs. playlists and unplayable songs.
+- Liked Songs separates songs you **liked one by one** from **whole albums you saved** (Spotify adds every track of a saved album), so a few saved albums don't dominate your statistics.
+- **Insights** page (see below).
+- Every song, album and artist links to Spotify.
 
-<img src="assets/playlist-analysis-features.png" alt="Playlist Analysis Features" width="600">
+<img src="assets/liked-songs.png" alt="Liked Songs statistics" width="800">
+
+### Insights
+
+A page about your taste rather than one playlist, built from your Liked Songs, your Spotify top artists and tracks, your recent plays and public music data.
+
+| | |
+|---|---|
+| <img src="assets/insights-fingerprint.png" alt="Taste fingerprint and highlights"> | <img src="assets/insights-what-you-play.png" alt="What you play"> |
+| **Taste fingerprint**: what you play (decades, song length, explicit share, artist variety) against what you like, plus highlight cards. | **What you play**: your top songs and artists over 4 weeks, 6 months and a year. |
+| <img src="assets/insights-cover-wall.png" alt="Cover wall"> | <img src="assets/insights-calendar.png" alt="Like calendar and eras"> |
+| **Cover wall**: albums sized by how much you liked from them. | **Like calendar** and **eras**: when you liked songs, with covers per year. |
+| <img src="assets/insights-sound-map.png" alt="Sound map"> | <img src="assets/insights-taste-eras.png" alt="Taste eras"> |
+| **Sound map**: every song by release year and tempo (Deezer), sized by Last.fm listeners. | **Taste eras**: genre families per year, from Last.fm tags. |
+| <img src="assets/insights-music-atlas.png" alt="Music atlas"> | <img src="assets/insights-constellation.png" alt="Artist constellation"> |
+| **Music atlas**: where your artists come from (MusicBrainz). | **Artist constellation**: your artists linked by similarity, plus similar artists you don't have yet. |
+
+Further sections open on demand: library growth, music age, artist depth, genres, a classical corner (composers and works), followed artists, saved albums, podcasts, Liked Songs vs. playlists and unplayable songs.
 
 ## Spotify limitations
 
@@ -126,8 +151,14 @@ GET  /playlists/download/:jobId          download a finished export
 
 GET  /insights/summary                   Liked Songs stats + top artists/tracks + recent plays
 GET  /insights/collection                followed artists, saved albums, podcasts
-GET  /insights/overlap                   Liked Songs vs. playlists (reads every playlist)
-GET  /insights/unplayable                songs Spotify greys out (reads every playlist)
+GET  /insights/deep?lens=handpicked|all  sound map, eras, atlas, constellation, tags, classical
+GET  /insights/overlap                   Liked Songs vs. playlists (from the synced library)
+GET  /insights/unplayable                songs Spotify greys out (from the synced library)
+
+GET  /library/sync                       library sync progress
+POST /library/sync                       start a library sync
+GET  /library/enrichment                 enrichment progress per source
+POST /library/enrichment                 start enrichment
 
 GET  /healthz                            liveness (no database check)
 GET  /readyz                             readiness (checks the database)
@@ -161,4 +192,15 @@ npm run dev
 
 Open <http://127.0.0.1:5173> (not `localhost`; the Spotify redirect and the cookies are tied to `127.0.0.1`) and click **Login with Spotify**.
 
-Run the API unit tests with `npm test` in `api/`. Build the frontend for production with `npm run build` in `frontend/`; the output in `dist/` is a static site.
+Run the API unit tests with `npm test` in `api/`.
+
+### Demo mode
+
+The frontend can run without the API, on generated, made-up data (used for the screenshots in this README):
+
+```bash
+cd api && npm run demo:fixtures      # writes frontend/src/demo/ and frontend/public/demo/ (git-ignored)
+cd ../frontend && VITE_DEMO=true npm run dev
+```
+
+The fixtures are produced by running the API's own statistics code on a fake library, so the demo shows exactly what the real app computes. Normal builds never include them. Build the frontend for production with `npm run build` in `frontend/`; the output in `dist/` is a static site.

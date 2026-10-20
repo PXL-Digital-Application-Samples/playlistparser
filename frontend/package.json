@@ -9,8 +9,13 @@
     "preview": "vite preview --host"
   },
   "dependencies": {
+    "d3-force": "^3.0.0",
+    "d3-geo": "^3.1.1",
+    "i18n-iso-countries": "^7.14.0",
+    "topojson-client": "^3.1.0",
     "vue": "^3.5.44",
-    "vue-router": "^4.6.4"
+    "vue-router": "^4.6.4",
+    "world-atlas": "^2.0.2"
   },
   "devDependencies": {
     "@vitejs/plugin-vue": "^6.0.10",

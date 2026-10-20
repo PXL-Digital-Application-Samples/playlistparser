@@ -3,11 +3,11 @@ import { createRouter, createWebHistory } from 'vue-router';
 import App from './App.vue';
 import Home from './views/Home.vue';
 import Playlist from './views/Playlist.vue';
-import Insights from './views/Insights.vue';
 
 const routes = [
   { path: '/', component: Home },
-  { path: '/insights', component: Insights },
+  // Loaded on demand: it carries the map data and chart libraries.
+  { path: '/insights', component: () => import('./views/Insights.vue') },
   { path: '/playlist/:id', component: Playlist, props: true },
 ];
 

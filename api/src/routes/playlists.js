@@ -2,6 +2,7 @@ import { computeStats, findDuplicates } from '../lib/tracks.js';
 import { playlistCsvHeader, playlistCsvRows, csvFilename, joinCsv } from '../lib/csv.js';
 import { summarizeListeners } from '../lib/lastfm.js';
 import { LIKED_ID, isAnalyzable } from '../lib/library.js';
+import { splitLikes, artistDepth } from '../lib/insights.js';
 
 const PLAYLIST_ID = /^[A-Za-z0-9]{1,64}$/;
 const LASTFM_EXPORT_BUDGET_MS = 3 * 60_000;
@@ -20,14 +21,34 @@ export default async function playlistRoutes(fastify) {
     return loadPlaylist(req.user, id, accessToken);
   }
 
+  // Liked Songs mixes songs liked one by one with whole albums saved in one
+  // go; tracks from album saves are flagged so the UI can tell them apart.
   fastify.get('/playlists/:id/contents', auth, async (req) => {
     const { tracks } = await playlistFor(req);
-    return { count: tracks.length, tracks };
+    if (req.params.id !== LIKED_ID) return { count: tracks.length, tracks };
+    const handpicked = new Set(splitLikes(tracks).handpicked.map((t) => t.position));
+    return { count: tracks.length, tracks: tracks.map((t) => (t.id && !handpicked.has(t.position) ? { ...t, album_save: true } : t)) };
   });
 
+  // For Liked Songs, ?lens=handpicked (default) leaves whole-album saves out;
+  // ?lens=all keeps every song but counts each album save once for artists.
   fastify.get('/playlists/:id/stats', auth, async (req) => {
     const { info, tracks } = await playlistFor(req);
-    return { playlist: info, ...computeStats(tracks), lastfm_status: lastfm.status };
+    if (req.params.id !== LIKED_ID) return { playlist: info, ...computeStats(tracks), lastfm_status: lastfm.status };
+
+    const lens = req.query.lens === 'all' ? 'all' : 'handpicked';
+    const split = splitLikes(tracks);
+    const stats = computeStats(lens === 'all' ? tracks : split.handpicked);
+    if (lens === 'all') {
+      stats.top_artists = artistDepth(tracks, split.events).deepest.map(({ name, count }) => ({ name, count }));
+    }
+    return {
+      playlist: info,
+      ...stats,
+      lens,
+      lens_counts: { handpicked: split.handpicked.length, all: tracks.length, album_saves: split.bulkGroups.length },
+      lastfm_status: lastfm.status,
+    };
   });
 
   fastify.get('/playlists/:id/simulate-dedupe', auth, async (req) => {

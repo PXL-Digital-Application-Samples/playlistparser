@@ -15,7 +15,7 @@ const RETRY_DELAYS_MS = [2_000, 6_000];
 const STALL_MS = 2 * 60_000;
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
-export function createLibrarySync({ prisma, spotify, accessTokenFor, log }) {
+export function createLibrarySync({ prisma, spotify, accessTokenFor, log, onComplete }) {
   // Atomically claim the user's sync row; returns false if a live sync runs.
   async function claim(userId) {
     const fresh = {
@@ -94,6 +94,8 @@ export function createLibrarySync({ prisma, spotify, accessTokenFor, log }) {
       });
 
       await update({ status: 'completed', current: null, finishedAt: new Date() });
+      // e.g. start enrichment (tempo, tags, origins) for the fresh data
+      onComplete?.(user);
     } catch (err) {
       log.error({ err, userId: user.id }, 'library sync failed');
       await update({ status: 'error', error: String(err.message || err).slice(0, 300), finishedAt: new Date() }).catch(() => {});

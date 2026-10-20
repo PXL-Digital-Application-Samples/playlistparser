@@ -15,7 +15,24 @@ export class ApiError extends Error {
   }
 }
 
+// Demo mode (VITE_DEMO=true): answer from generated fixtures instead of the
+// API, for screenshots without personal data. Generate them with
+// `npm run demo:fixtures` in api/. Off by default; normal builds never load them.
+const DEMO = import.meta.env.VITE_DEMO === 'true';
+const demoFixtures = DEMO ? import.meta.glob('./demo/fixtures.json', { import: 'default' }) : {};
+async function demoRequest(method, path) {
+  const load = demoFixtures['./demo/fixtures.json'];
+  if (!load) throw new ApiError(500, 'demo fixtures missing: run npm run demo:fixtures in api/');
+  const fixtures = await load();
+  const [p, q] = path.split('?');
+  const key = [`${method} ${path}`, `${method} ${p}?lens=${new URLSearchParams(q).get('lens') || 'handpicked'}`, `${method} ${p}`]
+    .find((k) => k in fixtures);
+  if (!key) throw new ApiError(404, 'not_found');
+  return structuredClone(fixtures[key]);
+}
+
 async function request(method, path) {
+  if (DEMO) return demoRequest(method, path);
   const res = await fetch(`${BASE}${path}`, {
     method,
     credentials: 'include',
@@ -37,7 +54,7 @@ export const endpoints = {
   me: () => get('/me'),
   playlists: () => get('/me/playlists'),
   playlistContents: (id) => get(`/playlists/${enc(id)}/contents`),
-  playlistStats: (id) => get(`/playlists/${enc(id)}/stats`),
+  playlistStats: (id, lens) => get(`/playlists/${enc(id)}/stats${lens ? `?lens=${enc(lens)}` : ''}`),
   playlistListeners: (id) => get(`/playlists/${enc(id)}/listeners`),
   simulateDedupe: (id) => get(`/playlists/${enc(id)}/simulate-dedupe`),
   simulateMerge: (a, b) => get(`/simulate-merge?a=${enc(a)}&b=${enc(b)}`),
@@ -50,6 +67,9 @@ export const endpoints = {
   insightsOverlap: () => get('/insights/overlap'),
   insightsUnplayable: () => get('/insights/unplayable'),
   librarySyncState: () => get('/library/sync'),
+  enrichmentState: () => get('/library/enrichment'),
+  startEnrichment: () => post('/library/enrichment'),
+  insightsDeep: (lens) => get(`/insights/deep?lens=${enc(lens)}`),
   startLibrarySync: () => post('/library/sync'),
 };
 

@@ -14,6 +14,7 @@ import { createSpotify, SpotifyError } from './lib/spotify.js';
 import { createLastfm } from './lib/lastfm.js';
 import { createLibrary } from './lib/library.js';
 import { createLibrarySync } from './lib/sync.js';
+import { createEnricher } from './lib/enrich.js';
 import { SESSION_COOKIE, ensureAccess, findSessionUser, deleteExpiredSessions } from './lib/auth.js';
 import authRoutes from './routes/auth.js';
 import meRoutes from './routes/me.js';
@@ -57,8 +58,10 @@ app.decorate('requireUser', async (req, reply) => {
 app.decorate('accessTokenFor', (user) =>
   ensureAccess({ prisma, spotify: app.spotify, cipher: app.cipher, log: app.log }, user.id)
 );
+app.decorate('enricher', createEnricher({ prisma, config, log: app.log }));
 app.decorate('librarySync', createLibrarySync({
   prisma, spotify: app.spotify, accessTokenFor: app.accessTokenFor, log: app.log,
+  onComplete: (user) => app.enricher.start(user).catch((err) => app.log.error({ err }, 'could not start enrichment')),
 }));
 
 await app.register(sensible);

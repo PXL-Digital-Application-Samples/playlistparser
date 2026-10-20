@@ -3,8 +3,11 @@
 // API instances share them. Lookups go through one throttled queue per
 // process to respect Last.fm's ~5 requests/second guideline.
 
+import { limiter } from './ratelimit.js';
+
 const API = 'https://ws.audioscrobbler.com/2.0/';
-const REQUEST_SPACING_MS = 250;
+// Shared with the enrichment job: Last.fm asks for at most ~5 requests/second.
+export const lastfmLimit = limiter('lastfm', 4);
 
 export function createLastfm({ apiKey, cacheDays }, prisma, log) {
   const enabled = Boolean(apiKey);
@@ -70,7 +73,6 @@ export function createLastfm({ apiKey, cacheDays }, prisma, log) {
           log.warn({ err, trackId: job.track.id }, 'last.fm lookup failed');
         }
         job.resolve();
-        await sleep(REQUEST_SPACING_MS);
       }
     } finally {
       working = false;
@@ -84,7 +86,6 @@ export function createLastfm({ apiKey, cacheDays }, prisma, log) {
     let res = await call(artist, track.name);
     if (res === null && / - /.test(track.name)) {
       // "Song - Remastered 2011" style names: retry with the base title.
-      await sleep(REQUEST_SPACING_MS);
       res = await call(artist, track.name.split(' - ')[0]);
     }
     return res === null ? { listeners: null, playcount: null } : res;
@@ -94,7 +95,7 @@ export function createLastfm({ apiKey, cacheDays }, prisma, log) {
     const params = new URLSearchParams({
       method: 'track.getInfo', api_key: apiKey, artist, track: title, autocorrect: '1', format: 'json',
     });
-    const res = await fetch(`${API}?${params}`, { headers: { 'User-Agent': 'playlistparser/1.0' } });
+    const res = await lastfmLimit(() => fetch(`${API}?${params}`, { headers: { 'User-Agent': 'playlistparser/1.0' } }));
     const body = await res.json().catch(() => ({}));
     if (body.error === 6) return null; // track not found
     if (body.error === 10 || body.error === 26) {

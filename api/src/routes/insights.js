@@ -1,5 +1,7 @@
 import { computeStats } from '../lib/tracks.js';
 import { LIKED_ID } from '../lib/library.js';
+import { artistKey } from '../lib/enrich.js';
+import { soundMap, tasteEras, musicAtlas, constellation, topTags, classicalCorner } from '../lib/deep.js';
 import {
   splitLikes, likeCalendar, libraryOverTime, musicAge, artistDepth, albumWall, tasteProfile,
   briefArtist, briefTrack, followGap, savedAlbumsStats, podcastStats, likedOverlap, findUnplayable,
@@ -145,6 +147,49 @@ export default async function insightsRoutes(fastify) {
           : { status: shows.status },
       };
     });
+  });
+
+  // Deep dive: Liked Songs combined with enrichment data. Partial results are
+  // fine while enrichment runs; the response includes its progress.
+  fastify.get('/insights/deep', auth, async (req) => {
+    const prisma = fastify.prisma;
+    const row = await prisma.libraryPlaylist.findUnique({
+      where: { userId_playlistId: { userId: req.user.id, playlistId: LIKED_ID } },
+      select: { tracks: true, status: true },
+    });
+    const enrichment = await fastify.enricher.state(req.user.id);
+    if (row?.status !== 'ok') return { status: 'not_synced', enrichment };
+
+    const tracks = row.tracks.filter((t) => t.id && t.type !== 'episode');
+    const split = splitLikes(tracks);
+    const lens = req.query.lens === 'all' ? 'all' : 'handpicked';
+    const songs = lens === 'all' ? tracks : split.handpicked;
+    const events = lens === 'all' ? split.events : split.handpicked;
+
+    const isrcs = [...new Set(tracks.map((t) => t.isrc).filter(Boolean))];
+    const names = [...new Set(tracks.flatMap((t) => t.artists.map((a) => artistKey(a.name))))];
+    const [bpmRows, artistRows, listenerRows, workRows] = await Promise.all([
+      prisma.deezerTrack.findMany({ where: { isrc: { in: isrcs } } }),
+      prisma.artistInfo.findMany({ where: { key: { in: names } } }),
+      prisma.lastfmTrack.findMany({ where: { spotifyTrackId: { in: tracks.map((t) => t.id) } } }),
+      prisma.recordingWork.findMany({ where: { isrc: { in: isrcs } } }),
+    ]);
+    const bpm = new Map(bpmRows.filter((r) => r.bpm).map((r) => [r.isrc, r.bpm]));
+    const artists = new Map(artistRows.map((r) => [r.key, r]));
+    const listeners = new Map(listenerRows.filter((r) => r.listeners !== null).map((r) => [r.spotifyTrackId, r.listeners]));
+    const works = new Map(workRows.map((r) => [r.isrc, r]));
+
+    return {
+      status: 'ok',
+      lens,
+      enrichment,
+      sound_map: soundMap(songs, { bpm, artists, listeners }),
+      eras: tasteEras(events, artists),
+      atlas: musicAtlas(events, artists),
+      constellation: constellation(events, artists),
+      tags: topTags(events, artists),
+      classical: classicalCorner(songs, works),
+    };
   });
 
   // The next two read every playlist, so they only use the synced copy

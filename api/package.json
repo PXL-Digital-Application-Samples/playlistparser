@@ -13,7 +13,8 @@
     "test": "node --test",
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate deploy",
-    "db:migrate:dev": "prisma migrate dev"
+    "db:migrate:dev": "prisma migrate dev",
+    "demo:fixtures": "node scripts/demo-fixtures.js"
   },
   "dependencies": {
     "@fastify/cookie": "^10.0.1",

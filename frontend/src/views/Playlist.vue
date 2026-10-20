@@ -15,6 +15,18 @@ const stats = ref(null);
 const dedupe = ref(null);
 const listeners = ref(null);
 const loading = ref(false);
+// Liked Songs only: count hand-picked songs, or include whole-album saves.
+const lens = ref('handpicked');
+const isLiked = computed(() => props.id === 'liked');
+async function setLens(next) {
+  if (lens.value === next) return;
+  lens.value = next;
+  try {
+    stats.value = { ...(await endpoints.playlistStats(props.id, next)) };
+  } catch (e) {
+    error.value = describeError(e);
+  }
+}
 const error = ref(null);
 let listenersTimer = null;
 
@@ -176,7 +188,7 @@ async function loadAll() {
   try {
     const [c, s, d] = await Promise.all([
       endpoints.playlistContents(props.id),
-      endpoints.playlistStats(props.id),
+      endpoints.playlistStats(props.id, isLiked.value ? lens.value : undefined),
       endpoints.simulateDedupe(props.id),
     ]);
     contents.value = c;
@@ -249,6 +261,21 @@ function exportToCsv() {
 
     <div v-if="error" class="alert alert-error" role="alert">{{ error }}</div>
 
+    <div v-if="isLiked && stats?.lens_counts" class="lens-row">
+      <div class="lens" role="group" aria-label="What counts as a like">
+        <button :aria-pressed="lens === 'handpicked'" @click="setLens('handpicked')">
+          Hand-picked <span>{{ stats.lens_counts.handpicked.toLocaleString() }}</span>
+        </button>
+        <button :aria-pressed="lens === 'all'" @click="setLens('all')">
+          Incl. album saves <span>{{ stats.lens_counts.all.toLocaleString() }}</span>
+        </button>
+      </div>
+      <p class="muted small">
+        {{ stats.lens_counts.album_saves }} whole albums were saved in one go (5+ songs within a minute).
+        {{ lens === 'handpicked' ? 'Stats below leave them out.' : 'Each counts once for top artists.' }}
+      </p>
+    </div>
+
     <!-- Loading skeleton -->
     <div v-if="loading" aria-busy="true">
       <span class="visually-hidden">Loading playlist data…</span>
@@ -308,8 +335,8 @@ function exportToCsv() {
         <h2 id="h-artists">Artists &amp; albums</h2>
         <div class="grid-2">
           <div v-if="stats.top_artists.length">
-            <h3>Top artists <span class="muted small">by number of songs here, not plays</span></h3>
-            <BarList :rows="stats.top_artists.map((a) => ({ label: a.name, value: a.count }))" unit="songs" />
+            <h3>Top artists <span class="muted small">{{ isLiked && lens === 'all' ? 'by likes (an album save counts once), not plays' : 'by number of songs here, not plays' }}</span></h3>
+            <BarList :rows="stats.top_artists.map((a) => ({ label: a.name, value: a.count }))" :unit="isLiked && lens === 'all' ? 'likes' : 'songs'" />
           </div>
           <div v-if="stats.top_albums.length">
             <h3>Top albums</h3>
@@ -471,6 +498,7 @@ function exportToCsv() {
                   <template v-else>{{ t.name || '—' }}</template>
                   <span v-if="t.explicit" class="explicit" title="Explicit" aria-label="Explicit">E</span>
                   <span v-if="t.is_local" class="muted small">(local file)</span>
+                  <span v-if="t.album_save" class="save-tag" title="Added when the whole album was saved">album save</span>
                   <span
                     v-if="duplicates.has(t.position)"
                     class="dup-tag"
@@ -651,6 +679,19 @@ th.num .th-btn { justify-content: flex-end; }
 .tracks th.col-lastfm, .tracks td.col-lastfm { background: #fff5f5; }
 .tracks tr.dup td { background: #fff8e5; }
 .tracks tr.flash td { background: #fde68a; transition: background 0.3s; }
+.lens-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; margin: 0 0 12px; }
+.lens-row p { margin: 0; }
+.lens { display: inline-flex; background: var(--surface-muted); border-radius: 999px; padding: 3px; }
+.lens button {
+  font: inherit; font-size: 13px; font-weight: 600; border: none; background: none; color: var(--text);
+  padding: 6px 14px; border-radius: 999px; cursor: pointer; white-space: nowrap;
+}
+.lens button span { font-weight: 400; color: var(--muted); margin-left: 4px; }
+.lens button[aria-pressed='true'] { background: var(--surface); box-shadow: var(--shadow); }
+.save-tag {
+  display: inline-block; font-size: 11px; color: #3c2a8a; background: #e9e4fb;
+  border-radius: 4px; padding: 0 5px; margin-left: 4px;
+}
 .dup-tag {
   display: inline-block;
   font-size: 11px;

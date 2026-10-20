@@ -60,5 +60,9 @@ defineProps({
 .cap span { opacity: 0.85; }
 .cell:not(.hero) .cap { font-size: 11px; padding: 22px 6px 5px; }
 .hero .cap { font-size: 15px; padding: 30px 12px 10px; }
-@media (max-width: 640px) { .grid { grid-template-columns: repeat(4, 1fr); } }
+/* 1 big (2x2) + 14 small = 3 full rows of 6; on phones 1 + 12 = 4 rows of 4. */
+@media (max-width: 640px) {
+  .grid { grid-template-columns: repeat(4, 1fr); }
+  .cell:nth-child(n + 14) { display: none; }
+}
 </style>

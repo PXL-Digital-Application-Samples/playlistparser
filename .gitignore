@@ -137,3 +137,7 @@ dist
 # Vite logs files
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
+
+# Demo mode fixtures (generated: npm run demo:fixtures in api/)
+frontend/src/demo/
+frontend/public/demo/
