@@ -16,6 +16,9 @@ import {
 import { soundMap, tasteEras, musicAtlas, constellation, topTags, classicalCorner } from '../src/lib/deep.js';
 import { summarizeListeners } from '../src/lib/lastfm.js';
 import { artistKey } from '../src/lib/enrich.js';
+import {
+  libraryOverview, crossPlaylistDuplicates, artistView, albumView, compareTracks, libraryArtistIds,
+} from '../src/lib/explore.js';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const OUT_JSON = join(here, '../../frontend/src/demo/fixtures.json');
@@ -234,7 +237,7 @@ put('GET /playlists/liked/contents', {
 });
 const likedStats = (which) => {
   const s = computeStats(which === 'all' ? liked : split.handpicked);
-  if (which === 'all') s.top_artists = artistDepth(liked, split.events).deepest.map(({ name, count }) => ({ name, count }));
+  if (which === 'all') s.top_artists = artistDepth(liked, split.events).deepest.map(({ id, name, count }) => ({ id: id ?? null, name, count }));
   return { playlist: likedInfo, ...s, lens: which, lens_counts: { handpicked: split.handpicked.length, all: liked.length, album_saves: split.bulkGroups.length }, lastfm_status: 'ok' };
 };
 put('GET /playlists/liked/stats?lens=handpicked', likedStats('handpicked'));
@@ -308,6 +311,49 @@ put('POST /library/sync', syncState);
 put('GET /library/enrichment', enrichment);
 put('POST /library/enrichment', enrichment);
 put('POST /auth/logout', { success: true });
+
+// ---- Library views: Home, Health, artist, album and compare pages ------------------------
+// The synced library as librarySync.load() returns it; playlists "changed" at
+// different times so Home has a recently-changed order.
+const libSources = [
+  { info: likedInfo, tracks: unplayableLiked, synced_at: new Date(now - 4 * 60_000) },
+  ...playlistSources.map((s, i) => ({ ...s, synced_at: new Date(now - (i * 3 + 1) * 86_400_000) })),
+];
+const libSyncedAt = new Date(now - 4 * 60_000).toISOString();
+put('GET /library/overview', { status: 'ok', synced_at: libSyncedAt, ...libraryOverview(libSources) });
+put('GET /library/duplicates', { status: 'ok', synced_at: libSyncedAt, ...crossPlaylistDuplicates(libSources) });
+const libArtists = libraryArtistIds(libSources);
+for (const a of artists) {
+  const view = artistView(libSources, a.id, { info: { name: a.name, ...artistInfo.get(artistKey(a.name)) }, libraryArtists: libArtists });
+  put(`GET /library/artists/${a.id}`, { status: 'ok', ...view, name: view.name ?? a.name, photo: null, genres: FAMILY_SPECS[a.fam].tags.slice(0, 2), url: '#' });
+}
+for (const al of albums) {
+  const view = albumView(libSources, al.id);
+  const have = new Set(view.songs.map((s) => s.id));
+  put(`GET /library/albums/${al.id}`, {
+    status: 'ok', ...view,
+    name: view.name ?? al.name, image: view.image ?? al.images[1].url, image_lg: view.image_lg ?? al.images[0].url,
+    release_date: al.release_date, total_tracks: al.total_tracks,
+    artists: view.artists.length ? view.artists : [{ id: al.artist.id, name: al.artist.name }],
+    tracklist: al.tracks.map((t, i) => ({ id: t.id, name: t.name, number: i + 1, disc: 1, duration_ms: t.duration_ms, in_library: have.has(t.id) })),
+    url: '#',
+  });
+}
+for (const A of playlistSources) {
+  for (const B of playlistSources) {
+    if (A === B) continue;
+    const ids = (s) => new Set(s.tracks.map((t) => t.id).filter(Boolean));
+    const [ia, ib] = [ids(A), ids(B)];
+    put(`GET /simulate-merge?a=${A.info.id}&b=${B.info.id}`, {
+      playlist_a: { id: A.info.id, name: A.info.name, image: A.info.image, tracks: ia.size },
+      playlist_b: { id: B.info.id, name: B.info.name, image: B.info.image, tracks: ib.size },
+      union_count: new Set([...ia, ...ib]).size,
+      intersection_count: [...ia].filter((x) => ib.has(x)).length,
+      would_add_from_b_to_a: [...ib].filter((x) => !ia.has(x)).length,
+      ...compareTracks(A.tracks, B.tracks),
+    });
+  }
+}
 
 mkdirSync(dirname(OUT_JSON), { recursive: true });
 writeFileSync(OUT_JSON, JSON.stringify(responses));

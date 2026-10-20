@@ -48,6 +48,8 @@ export function computeStats(tracks) {
   const songs = tracks.filter((t) => t.id || t.is_local);
   const ids = new Set();
   const artistFreq = new Map();
+  const artistIds = new Map();
+  const albumIds = new Map();
   const albumFreq = new Map();
   const decades = new Map();
   const albumTypes = new Map();
@@ -60,8 +62,15 @@ export function computeStats(tracks) {
   for (const t of songs) {
     if (t.id) ids.add(t.id);
 
-    for (const a of t.artists) bump(artistFreq, a.name);
-    if (t.album?.name) bump(albumFreq, `${t.album.name}\u0000${t.artists[0]?.name ?? ''}`);
+    for (const a of t.artists) {
+      bump(artistFreq, a.name);
+      if (a.id) artistIds.set(a.name, a.id);
+    }
+    if (t.album?.name) {
+      const key = `${t.album.name}\u0000${t.artists[0]?.name ?? ''}`;
+      bump(albumFreq, key);
+      if (t.album.id) albumIds.set(key, t.album.id);
+    }
     if (t.album?.album_type) bump(albumTypes, t.album.album_type);
 
     const rd = parseReleaseDate(t.album?.release_date);
@@ -100,10 +109,10 @@ export function computeStats(tracks) {
     local_tracks: songs.filter((t) => t.is_local).length,
     episodes: tracks.filter((t) => t.type === 'episode').length,
     artists_unique: artistFreq.size,
-    top_artists: topN(artistFreq, 10).map(([name, count]) => ({ name, count })),
+    top_artists: topN(artistFreq, 10).map(([name, count]) => ({ id: artistIds.get(name) ?? null, name, count })),
     top_albums: topN(albumFreq, 5).map(([key, count]) => {
       const [name, artist] = key.split('\u0000');
-      return { name, artist, count };
+      return { id: albumIds.get(key) ?? null, name, artist, count };
     }),
     duration: {
       total_ms: totalMs,

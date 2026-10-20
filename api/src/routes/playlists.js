@@ -3,6 +3,7 @@ import { playlistCsvHeader, playlistCsvRows, csvFilename, joinCsv } from '../lib
 import { summarizeListeners } from '../lib/lastfm.js';
 import { LIKED_ID, isAnalyzable } from '../lib/library.js';
 import { splitLikes, artistDepth } from '../lib/insights.js';
+import { compareTracks } from '../lib/explore.js';
 
 const PLAYLIST_ID = /^[A-Za-z0-9]{1,64}$/;
 const LASTFM_EXPORT_BUDGET_MS = 3 * 60_000;
@@ -40,7 +41,7 @@ export default async function playlistRoutes(fastify) {
     const split = splitLikes(tracks);
     const stats = computeStats(lens === 'all' ? tracks : split.handpicked);
     if (lens === 'all') {
-      stats.top_artists = artistDepth(tracks, split.events).deepest.map(({ name, count }) => ({ name, count }));
+      stats.top_artists = artistDepth(tracks, split.events).deepest.map(({ id, name, count }) => ({ id: id ?? null, name, count }));
     }
     return {
       playlist: info,
@@ -94,11 +95,13 @@ export default async function playlistRoutes(fastify) {
     const idsB = new Set(B.tracks.map((t) => t.id).filter(Boolean));
     const intersection = [...idsA].filter((x) => idsB.has(x));
     return {
-      playlist_a: { id: a, name: A.info.name, tracks: idsA.size },
-      playlist_b: { id: b, name: B.info.name, tracks: idsB.size },
+      playlist_a: { id: a, name: A.info.name, image: A.info.image ?? null, tracks: idsA.size },
+      playlist_b: { id: b, name: B.info.name, image: B.info.image ?? null, tracks: idsB.size },
       union_count: new Set([...idsA, ...idsB]).size,
       intersection_count: intersection.length,
       would_add_from_b_to_a: [...idsB].filter((x) => !idsA.has(x)).length,
+      // The songs themselves, for the compare page (capped per list).
+      ...compareTracks(A.tracks, B.tracks),
     };
   });
 
