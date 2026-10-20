@@ -7,7 +7,7 @@ import Icon from './Icon.vue';
 
 // One place for everything running in the background: library sync,
 // public-data lookups, and the "export all" CSV job.
-const ENRICH = { deezer: 'tempo', lastfm: 'tags', musicbrainz: 'origins' };
+const ENRICH = { deezer: 'tempo', lastfm: 'tags', musicbrainz: 'origins and composers' };
 
 const syncPct = computed(() => (sync.value?.total ? Math.round((sync.value.done / sync.value.total) * 100) : 0));
 const enrichRows = computed(() =>

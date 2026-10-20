@@ -21,7 +21,7 @@ const SAMPLE_DUPES = [{ song: 'Harbor Lights', n: 4 }, { song: 'Paper Satellites
         <h1>See what your playlists are really made of.</h1>
         <p class="lede">
           Statistics for every playlist and your Liked Songs, the same song hiding in several playlists,
-          songs Spotify greyed out, and a deep dive into your taste.
+          songs Spotify greyed out, and charts of your taste: decades, genres, tempo and where your artists come from.
         </p>
         <a :href="loginUrl" class="btn btn-spotify btn-login">
           <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">

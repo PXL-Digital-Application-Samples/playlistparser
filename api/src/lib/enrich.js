@@ -14,7 +14,6 @@ import { LIKED_ID } from './library.js';
 const STALL_MS = 2 * 60_000;
 const REFRESH_DAYS = 90;
 const CLASSICAL_TAGS = ['classical', 'baroque', 'opera', 'romantic', 'composer', 'chamber music', 'orchestral', 'early music'];
-const MAX_COMPOSER_LOOKUPS = 150;
 const MB_USER_AGENT = 'playlistparser/1.0 ( https://github.com/PXL-Digital-Application-Samples/playlistparser )';
 
 const deezerLimit = limiter('deezer', 8);
@@ -160,7 +159,9 @@ export function createEnricher({ prisma, config, log }) {
     const classical = new Set(infos.filter((i) => (i.tags || []).some((t) => CLASSICAL_TAGS.some((c) => t.name.includes(c)))).map((i) => i.key));
     const isrcs = [...new Set(tracks.filter((t) => t.isrc && t.artists.some((a) => classical.has(artistKey(a.name)))).map((t) => t.isrc))];
     const knownWorks = new Set((await prisma.recordingWork.findMany({ where: { isrc: { in: isrcs } }, select: { isrc: true } })).map((r) => r.isrc));
-    const workItems = isrcs.filter((i) => !knownWorks.has(i)).slice(0, MAX_COMPOSER_LOOKUPS).map((isrc) => ({ kind: 'work', isrc }));
+    // All of them in one run (no per-run cap): a cap made the job come back
+    // on every sync until the backlog was gone. Origins go first.
+    const workItems = isrcs.filter((i) => !knownWorks.has(i)).map((isrc) => ({ kind: 'work', isrc }));
 
     const composerOfWork = new Map();
     await runJob(userId, 'musicbrainz', [...artistItems, ...workItems], async (item) => {
@@ -224,7 +225,12 @@ async function getJson(limit, url, headers = {}) {
       await new Promise((r) => setTimeout(r, 3000 * (attempt + 1)));
       continue;
     }
-    if (res.status === 404) return {};
+    // Other client errors (404, 400 for a query it can't parse, ...) won't
+    // change on a retry. Return the error body: MusicBrainz then finds no
+    // match and the result is cached instead of looked up on every run,
+    // while Last.fm's error codes (e.g. 10 = invalid key) still throw and
+    // aren't cached.
+    if (res.status >= 400 && res.status < 500 && res.status !== 429) return res.json().catch(() => ({}));
     if (!res.ok) throw new Error(`${new URL(url).host} ${res.status}`);
     return res.json();
   }

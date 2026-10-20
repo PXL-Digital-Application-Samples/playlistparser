@@ -42,7 +42,7 @@ async function loadSummary() {
   }
 }
 
-// ---- Deep dive: Liked Songs + public music data ------------------------------
+// ---- Discover: Liked Songs + public music data -------------------------------
 const deep = ref(null);
 const deepError = ref(null);
 async function loadDeep() {
