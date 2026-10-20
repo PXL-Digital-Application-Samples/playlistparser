@@ -92,19 +92,19 @@ const EXPLORE = {
         <ul class="health-list">
           <li>
             <router-link to="/health#duplicates" class="health-row">
-              <strong :class="{ warn: health.duplicates }">{{ health.duplicates }}</strong>
+              <strong :class="{ warn: health.duplicates }">{{ health.duplicates.toLocaleString() }}</strong>
               <span>{{ health.duplicates === 1 ? 'song is' : 'songs are' }} in two or more playlists</span>
             </router-link>
           </li>
           <li>
             <router-link to="/health#unplayable" class="health-row">
-              <strong :class="{ warn: health.unplayable }">{{ health.unplayable }}</strong>
+              <strong :class="{ warn: health.unplayable }">{{ health.unplayable.toLocaleString() }}</strong>
               <span>{{ health.unplayable === 1 ? 'song is' : 'songs are' }} greyed out by Spotify</span>
             </router-link>
           </li>
           <li v-if="health.liked_in_no_playlist !== null">
             <router-link to="/health#orphans" class="health-row">
-              <strong>{{ health.liked_in_no_playlist }}</strong>
+              <strong>{{ health.liked_in_no_playlist.toLocaleString() }}</strong>
               <span>liked {{ health.liked_in_no_playlist === 1 ? 'song is' : 'songs are' }} in no playlist</span>
             </router-link>
           </li>
@@ -182,7 +182,7 @@ const EXPLORE = {
 .dash-health { padding-bottom: 10px; }
 .health-list { list-style: none; margin: 0; padding: 0; }
 .health-row {
-  display: grid; grid-template-columns: 52px 1fr; align-items: baseline; gap: 10px;
+  display: grid; grid-template-columns: 64px 1fr; align-items: baseline; gap: 10px;
   padding: 10px 6px; border-top: 1px solid var(--border); color: var(--text); text-decoration: none; border-radius: 6px;
 }
 .health-list li:first-child .health-row { border-top: none; }

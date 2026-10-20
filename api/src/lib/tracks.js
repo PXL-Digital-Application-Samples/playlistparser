@@ -9,7 +9,11 @@ export function normalizeItems(items) {
     return {
       position: idx,
       type: t?.type ?? null,
-      id: t?.id ?? null,
+      // With a market (e.g. market=from_token) Spotify "relinks" songs that
+      // aren't available there to a playable version from another release;
+      // linked_from is the song the user actually saved. Keep that id, or two
+      // saved editions of an album look like the same songs twice.
+      id: t?.linked_from?.id ?? t?.id ?? null,
       name: t?.name ?? null,
       artists: isTrack ? (t.artists || []).map((a) => ({ id: a.id, name: a.name })) : [],
       album: isTrack && t.album

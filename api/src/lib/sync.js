@@ -11,6 +11,9 @@ import { normalizeItems } from './tracks.js';
 import { LIKED_ID, pickImage, isAnalyzable } from './library.js';
 
 const CONCURRENCY = 3;
+// Bump when the stored track shape changes, so every playlist is re-read
+// once instead of waiting for it to change on Spotify.
+const FORMAT = 'f2';
 const RETRY_DELAYS_MS = [2_000, 6_000];
 const STALL_MS = 2 * 60_000;
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -56,13 +59,13 @@ export function createLibrarySync({ prisma, spotify, accessTokenFor, log, onComp
       const targets = [
         ...(likedHead
           ? [{
-              id: LIKED_ID, name: 'Liked Songs', version: `${likedHead.total}:${likedHead.items?.[0]?.added_at ?? ''}`,
+              id: LIKED_ID, name: 'Liked Songs', version: `${FORMAT}:${likedHead.total}:${likedHead.items?.[0]?.added_at ?? ''}`,
               image: null, url: 'https://open.spotify.com/collection/tracks',
               ownerId: user.spotifyId, ownerName: user.displayName, collaborative: false,
             }]
           : []),
         ...playlists.filter((p) => isAnalyzable(p, user.spotifyId)).map((p) => ({
-          id: p.id, name: p.name, version: p.snapshot_id ?? '', image: pickImage(p.images),
+          id: p.id, name: p.name, version: `${FORMAT}:${p.snapshot_id ?? ''}`, image: pickImage(p.images),
           url: p.external_urls?.spotify ?? null, ownerId: p.owner?.id ?? null,
           ownerName: p.owner?.display_name ?? null, collaborative: Boolean(p.collaborative),
         })),

@@ -85,6 +85,12 @@ test('normalizeItems accepts both item (2026) and track (legacy)', () => {
   assert.equal(a.isrc, 'ISRC-t1');
 });
 
+test('normalizeItems keeps the saved song id when Spotify relinks it', () => {
+  const relinked = item('playable-id', 'One');
+  relinked.item.linked_from = { id: 'saved-id', type: 'track' };
+  assert.equal(normalizeItems([relinked])[0].id, 'saved-id');
+});
+
 test('computeStats and findDuplicates', () => {
   const tracks = normalizeItems([
     item('t1', 'One'),

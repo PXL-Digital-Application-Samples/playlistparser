@@ -342,9 +342,10 @@ function exportToCsv() {
         <h2 id="h-overview">Overview</h2>
         <div class="cards">
           <div class="card">
-            <span class="card-label">Tracks</span>
+            <span class="card-label">{{ isLiked && lens === 'handpicked' ? 'Liked one by one' : 'Tracks' }}</span>
             <strong>{{ fmtNumber(stats.tracks_total) }}</strong>
-            <span class="card-sub">{{ fmtNumber(stats.tracks_unique) }} unique</span>
+            <span v-if="isLiked && lens === 'handpicked'" class="card-sub">of {{ fmtNumber(stats.lens_counts?.all) }}; album saves left out</span>
+            <span v-else class="card-sub">{{ fmtNumber(stats.tracks_unique) }} unique</span>
           </div>
           <div class="card">
             <span class="card-label">Artists</span>
@@ -367,6 +368,7 @@ function exportToCsv() {
           <div class="card">
             <span class="card-label">Duplicates</span>
             <strong>{{ duplicates.size }}</strong>
+            <span v-if="isLiked && lens === 'handpicked'" class="card-sub">in all {{ fmtNumber(contents.tracks.length) }} tracks</span>
             <a v-if="duplicates.size" href="#duplicates" class="card-sub" @click.prevent="jumpTo('duplicates')">Show them</a>
           </div>
         </div>

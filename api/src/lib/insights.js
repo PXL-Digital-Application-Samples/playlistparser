@@ -405,7 +405,7 @@ export function findUnplayable(sources) {
   const byTrack = new Map();
   for (const { info, tracks } of sources) {
     for (const t of tracks) {
-      if (t.is_playable !== false || t.is_local || !t.id) continue;
+      if (t.is_playable !== false || t.is_local || !t.id || t.type === 'episode') continue;
       if (!byTrack.has(t.id)) byTrack.set(t.id, { track: brief(t), in: [] });
       byTrack.get(t.id).in.push({ id: info.id, name: info.name });
     }
