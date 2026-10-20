@@ -15,6 +15,9 @@ export const FAMILIES = [
   ['pop', ['pop']],
   ['world', ['latin', 'world', 'reggae', 'afro', 'bossa', 'chanson', 'french', 'samba', 'fado', 'flamenco']],
 ];
+// Last.fm tags that say nothing about the music: bare years, personal labels.
+const JUNK_TAGS = new Set(['seen live', 'favorites', 'favourites', 'favorite', 'albums i own', 'spotify']);
+export const isUsefulTag = (name) => !/^\d{4}$/.test(name.trim()) && !JUNK_TAGS.has(name.trim().toLowerCase());
 const familyOfTag = (tag) => FAMILIES.find(([, words]) => words.some((w) => tag.includes(w)))?.[0] ?? null;
 
 export function familyOf(info) {
@@ -147,7 +150,7 @@ export function constellation(events, artists, size = 40) {
 export function topTags(events, artists, n = 15) {
   const tags = new Map();
   for (const e of events) {
-    for (const t of (infoOf(artists, e)?.tags || []).slice(0, 3)) tags.set(t.name, (tags.get(t.name) || 0) + 1);
+    for (const t of (infoOf(artists, e)?.tags || []).filter((x) => isUsefulTag(x.name)).slice(0, 3)) tags.set(t.name, (tags.get(t.name) || 0) + 1);
   }
   return [...tags.entries()].sort((a, b) => b[1] - a[1]).slice(0, n).map(([tag, count]) => ({ tag, count, family: familyOfTag(tag) }));
 }

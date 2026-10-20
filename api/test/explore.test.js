@@ -57,7 +57,7 @@ test('artistView collects songs, likes per year, playlists and similar artists',
   const ids = libraryArtistIds(library);
   const v = artistView(library, 'a', {
     libraryArtists: ids,
-    info: { name: 'A', tags: [{ name: 'indie' }], similar: [{ name: 'B', match: 0.8 }, { name: 'Zed', match: 0.5 }], country: 'BE', area: 'Belgium' },
+    info: { name: 'A', tags: [{ name: '2022' }, { name: 'indie' }, { name: 'seen live' }], similar: [{ name: 'B', match: 0.8 }, { name: 'Zed', match: 0.5 }], country: 'BE', area: 'Belgium' },
   });
   assert.equal(v.name, 'A');
   assert.deepEqual(v.counts, { songs: 4, liked: 2, playlists: 2, albums: 1 });
@@ -66,6 +66,7 @@ test('artistView collects songs, likes per year, playlists and similar artists',
   assert.equal(v.songs[0].id, 't1'); // liked and in a playlist ranks first
   assert.deepEqual(v.similar.map((s) => [s.name, s.id]), [['B', 'b'], ['Zed', null]]);
   assert.equal(v.origin.area, 'Belgium');
+  assert.deepEqual(v.tags, ['indie']); // bare years and 'seen live' are left out
 });
 
 test('albumView counts liked songs and playlists', () => {

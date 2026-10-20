@@ -62,7 +62,7 @@ const TYPES = { album: 'Album', single: 'Single', compilation: 'Compilation' };
             </p>
             <p v-if="album?.counts" class="meta">
               <template v-if="album.counts.songs">
-                You have {{ album.counts.songs }}<template v-if="album.total_tracks"> of {{ album.total_tracks }}</template> songs
+                You have {{ album.counts.songs }}<template v-if="album.total_tracks"> of {{ plural(album.total_tracks, 'song') }}</template><template v-else> {{ album.counts.songs === 1 ? 'song' : 'songs' }}</template>
                 · {{ album.counts.liked }} liked<template v-if="album.counts.playlists"> · in {{ plural(album.counts.playlists, 'playlist') }}</template>
               </template>
               <template v-else>None of its songs are in your library</template>

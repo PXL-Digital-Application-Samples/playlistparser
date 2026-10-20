@@ -98,7 +98,7 @@ const shell = computed(() => loading.value || me.value);
           <router-link :to="n.to" class="rail-link" :aria-current="section === n.to ? 'page' : null">
             <Icon :name="n.icon" :size="18" />
             <span>{{ n.label }}</span>
-            <span v-if="n.to === '/health' && healthCount" class="count-pill" :aria-label="`${healthCount} things to check`">{{ healthCount }}</span>
+            <span v-if="n.to === '/health' && healthCount" class="count-pill" :aria-label="`${healthCount} things to check`">{{ healthCount > 99 ? '99+' : healthCount }}</span>
           </router-link>
           <div v-if="n.to === '/insights' && section === '/insights'" class="rail-sub">
             <router-link

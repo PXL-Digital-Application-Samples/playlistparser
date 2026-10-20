@@ -4,6 +4,7 @@
 // LIKED_ID). Pure functions, no I/O.
 import { LIKED_ID } from './library.js';
 import { splitLikes } from './insights.js';
+import { isUsefulTag } from './deep.js';
 
 const songs = (tracks) => tracks.filter((t) => t.id && t.type !== 'episode' && !t.is_local);
 const year = (iso) => (iso ? Number(String(iso).slice(0, 4)) : null);
@@ -181,7 +182,7 @@ export function artistView(sources, artistId, { info = null, libraryArtists = ne
       .sort((a, b) => (b.playlists.length + (b.liked ? 1 : 0)) - (a.playlists.length + (a.liked ? 1 : 0)) || String(a.name).localeCompare(String(b.name))),
     albums: albumList,
     playlists: [...playlists.values()].sort((a, b) => b.songs - a.songs),
-    tags: (info?.tags || []).slice(0, 6).map((t) => t.name),
+    tags: (info?.tags || []).filter((t) => isUsefulTag(t.name)).slice(0, 6).map((t) => t.name),
     origin: info?.area || info?.country ? { country: info.country ?? null, area: info.area ?? null, since: info.beginYear ?? null } : null,
     similar: (info?.similar || []).slice(0, 12).map((s) => {
       const id = libraryArtists.get(key(s.name)) ?? null;

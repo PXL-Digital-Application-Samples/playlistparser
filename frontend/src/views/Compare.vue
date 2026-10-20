@@ -47,6 +47,11 @@ async function compare() {
   }
 }
 watch([a, b, () => props.me], compare, { immediate: true });
+// Back/forward (or a link) can change the query while this page stays open.
+watch(() => [route.query.a, route.query.b], ([qa, qb]) => {
+  if (String(qa || '') !== a.value) a.value = String(qa || '');
+  if (String(qb || '') !== b.value) b.value = String(qb || '');
+});
 
 function swap() {
   [a.value, b.value] = [b.value, a.value];
