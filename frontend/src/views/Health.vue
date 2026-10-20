@@ -7,6 +7,7 @@ import { syncVersion, sync, syncing } from '../status.js';
 import Icon from '../components/Icon.vue';
 import BarList from '../components/BarList.vue';
 import PlayButton from '../components/PlayButton.vue';
+import { burst } from '../confetti.js';
 
 // Library health: problems you may want to fix on Spotify. Everything here is
 // read from the synced copy of your library; nothing is changed.
@@ -36,6 +37,7 @@ async function load() {
   }
   // Links like /health#unplayable land on their section once it exists.
   await nextTick();
+  if (dupes.value?.status === 'ok' && !dupes.value.total && !unplayable.value?.total) burst({ count: 160 });
   if (route.hash) document.querySelector(route.hash)?.scrollIntoView({ block: 'start' });
 }
 watch(() => props.me, load, { immediate: true });

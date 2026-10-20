@@ -1,6 +1,7 @@
 <script setup>
 import { ref } from 'vue';
 import { shareCard } from '../shareCard.js';
+import { burstFrom } from '../confetti.js';
 import Icon from './Icon.vue';
 
 // "Save image": draws the highlight as a story-format PNG and shares it
@@ -12,12 +13,14 @@ const props = defineProps({
 });
 
 const state = ref('idle'); // idle | working | done | error
+const btn = ref(null);
 async function run() {
   if (state.value === 'working') return;
   state.value = 'working';
   try {
-    await shareCard(props.card);
+    const result = await shareCard(props.card);
     state.value = 'done';
+    if (result !== 'cancelled') burstFrom(btn.value, { count: 70 });
   } catch {
     state.value = 'error';
   }
@@ -28,6 +31,7 @@ const text = () => ({ working: 'Drawing…', done: 'Saved', error: 'Failed, try 
 
 <template>
   <button
+    ref="btn"
     type="button"
     class="share"
     :class="{ compact }"

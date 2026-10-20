@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, watch } from 'vue';
+import { ref, computed, watch, nextTick } from 'vue';
 import { endpoints, describeError } from '../api.js';
 import { plural } from '../playlistCache.js';
 import { lens } from '../settings.js';
@@ -7,12 +7,15 @@ import { overview, sync, syncing, syncVersion, ago } from '../status.js';
 import { highlightCards } from '../highlights.js';
 import { coverTint } from '../coverTint.js';
 import { setBackdropTint } from '../backdrop.js';
+import { playIntro } from '../intro.js';
+import { burstFrom } from '../confetti.js';
 import { INSIGHT_TABS } from '../nav.js';
 import Icon from '../components/Icon.vue';
 import StoryCards from '../components/StoryCards.vue';
 import { heroName } from '../transitions.js';
 
 const props = defineProps({ me: Object, meLoading: Boolean });
+const root = ref(null);
 
 const summary = ref(null);
 const error = ref(null);
@@ -28,6 +31,14 @@ watch(() => props.me, loadSummary, { immediate: true });
 watch(syncVersion, loadSummary);
 
 const cards = computed(() => highlightCards(summary.value, lens.value).slice(0, 4));
+// The opening sequence waits for the highlight cards, so they can be dealt in.
+let introDone = false;
+watch(() => [props.me, cards.value.length], async ([me, n]) => {
+  if (introDone || !me || !n) return;
+  introDone = true;
+  await nextTick();
+  playIntro(root.value);
+});
 const topArtists = computed(() => {
   const top = summary.value?.listening?.top;
   return top?.status === 'ok' ? top.data.short_term.artists.slice(0, 8) : [];
@@ -47,10 +58,10 @@ const EXPLORE = {
 </script>
 
 <template>
-  <div class="page">
+  <div ref="root" class="page">
     <header class="dash-head">
       <p class="eyebrow">Your library</p>
-      <h1>{{ firstName ? `Hi, ${firstName}.` : 'Your library' }}</h1>
+      <h1 class="greeting" title="Click me" @click="burstFrom($event.currentTarget, { count: 120 })">{{ firstName ? `Hi, ${firstName}.` : 'Your library' }}</h1>
       <p v-if="totals" class="muted">
         {{ plural(totals.songs, 'song') }} across {{ plural(totals.playlists, 'playlist') }} and your Liked Songs<template v-if="sync?.finished_at"> · synced {{ ago(sync.finished_at) }}</template>.
       </p>
@@ -165,7 +176,7 @@ const EXPLORE = {
 
 <style scoped>
 .page > section, .dash-grid { margin-top: 32px; }
-.dash-head h1 { font-size: clamp(2rem, 4vw, 2.6rem); margin: 6px 0 6px; line-height: 1.05; }
+.dash-head h1 { font-size: clamp(2rem, 4vw, 2.6rem); margin: 6px 0 6px; line-height: 1.05; width: fit-content; cursor: pointer; user-select: none; }
 .dash-head p.muted { margin: 0; }
 .first-sync h2 { margin: 0 0 6px; font-size: 1.2rem; }
 .first-sync .bar { width: 100%; max-width: 420px; margin-top: 12px; height: 6px; }

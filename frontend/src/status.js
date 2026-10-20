@@ -1,5 +1,6 @@
 import { ref, computed } from 'vue';
 import { endpoints, describeError } from './api.js';
+import { burst } from './confetti.js';
 
 // Background work that belongs to the whole app, not one page: the library
 // sync, the enrichment lookups that follow it, the "export all" job, and the
@@ -141,6 +142,7 @@ export async function startExportAll() {
       if (p.status === 'completed') {
         exportJob.value = { ...p, downloadUrl: endpoints.downloadExportUrl(jobId) };
         triggerDownload(exportJob.value.downloadUrl);
+        burst({ count: 140 });
       } else if (p.status === 'error') {
         exportJob.value = { ...p, error: `Export failed: ${p.error}` };
       } else {
