@@ -2,8 +2,8 @@
 import { onMounted, onBeforeUnmount } from 'vue';
 import { calm } from '../motion.js';
 
-// Little records and music notes trailing the mouse (Home and the welcome
-// page). Mouse only: off on touch screens and in Zen mode.
+// Little records and music notes trailing the mouse, part of Disco mode.
+// Mouse only: off on touch screens and in Zen mode.
 let canvas = null;
 let ctx = null;
 let raf = 0;

@@ -2,7 +2,7 @@
 import { inject } from 'vue';
 import ThemeSwitch from '../components/ThemeSwitch.vue';
 import RecordLogo from '../components/RecordLogo.vue';
-import CursorTrail from '../components/CursorTrail.vue';
+
 
 const loginUrl = inject('loginUrl');
 const DECADES = [['60s', 26], ['70s', 46], ['80s', 74], ['90s', 65], ['00s', 100], ['10s', 89], ['20s', 36]];
@@ -12,7 +12,6 @@ const SAMPLE_DUPES = [{ song: 'Harbor Lights', n: 4 }, { song: 'Paper Satellites
 
 <template>
   <div class="welcome">
-    <CursorTrail />
     <header class="w-top">
       <span class="brand"><RecordLogo /><span class="brand-text">Playlist Parser</span></span>
       <ThemeSwitch />

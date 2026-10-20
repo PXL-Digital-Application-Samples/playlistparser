@@ -8,6 +8,7 @@ import { bpm as playerBpm, status } from './player.js';
 // a disco ball drops in and light spots sweep the page. Toggled with the
 // switch or the Konami code; never in Zen mode.
 export const disco = ref(false);
+export const beatCount = ref(0); // bumps on every beat (the ball flashes)
 
 const PALETTE = ['--fam-rock', '--fam-hip-hop', '--fam-folk-country', '--fam-jazz-soul', '--fam-classical', '--fam-electronic', '--fam-pop'];
 // Bars, links and labels change colour; buttons keep theirs so their text stays readable.
@@ -28,6 +29,7 @@ function onBeat() {
   const targets = document.querySelectorAll('main .panel, main .tile, main .story, main .card-link, main .cover-card');
   gsap.fromTo(targets, { scale: 1 }, { scale: beat % 2 ? 1.025 : 1.04, duration: 0.09, yoyo: true, repeat: 1, ease: 'power1.out', overwrite: 'auto' });
   beat++;
+  beatCount.value = beat;
   timer = setTimeout(onBeat, 60_000 / tempo());
 }
 

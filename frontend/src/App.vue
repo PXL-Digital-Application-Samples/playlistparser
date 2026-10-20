@@ -93,6 +93,7 @@ const shell = computed(() => loading.value || me.value);
   <a href="#main" class="skip-link">Skip to content</a>
 
   <ShaderBackdrop />
+  <DiscoBall />
   <div :class="shell ? 'shell' : 'public'">
     <!-- Desktop: side rail -->
     <aside v-if="shell" class="rail" aria-label="App">
@@ -162,7 +163,6 @@ const shell = computed(() => loading.value || me.value);
     </main>
 
     <PlayerDock v-if="me" />
-    <DiscoBall />
 
     <!-- Phone: bottom tabs -->
     <nav v-if="me" class="tabbar" aria-label="Main">
