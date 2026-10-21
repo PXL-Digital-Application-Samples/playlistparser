@@ -28,9 +28,31 @@ const y = (bpm) => T + (1 - (Math.min(Math.max(bpm, BPM_MIN), BPM_MAX) - BPM_MIN
 const r = (listeners) => (listeners ? 2 + Math.min(6, Math.sqrt(Math.log10(listeners + 1)) * 2.3) : 2.5);
 
 // Time-lapse: a year cursor sweeps from the oldest song to the newest and
-// songs appear as their release year passes.
+// songs appear as their release year passes. Years without any (shown) songs
+// go by quickly, so the time goes to the years that have something to show.
 const sweep = ref(null); // current year while the time-lapse runs
 let sweepTween = null;
+const EMPTY_YEAR = 0.12; // share of a full year's time for a year without songs
+
+// Maps progress 0..1 to a year, giving empty years less of the time.
+function yearClock(from, to) {
+  const filled = new Set(props.points.filter((p) => !hidden.value.has(p.family ?? 'other')).map((p) => Math.floor(p.year)));
+  const weights = [];
+  for (let yr = from; yr < to; yr++) weights.push(filled.has(yr) ? 1 : EMPTY_YEAR);
+  const total = weights.reduce((a, b) => a + b, 0);
+  return {
+    total,
+    at(t) {
+      let left = t * total;
+      for (let i = 0; i < weights.length; i++) {
+        if (left <= weights[i]) return from + i + left / weights[i];
+        left -= weights[i];
+      }
+      return to;
+    },
+  };
+}
+
 function timeLapse() {
   if (sweepTween) {
     sweepTween.kill();
@@ -39,11 +61,12 @@ function timeLapse() {
     return;
   }
   const [from, to] = yearRange.value;
-  const state = { year: from };
+  const clock = yearClock(from, to);
+  const state = { t: 0 };
   sweep.value = from;
   sweepTween = gsap.to(state, {
-    year: to, duration: motionOn() ? Math.min(14, Math.max(6, (to - from) / 6)) : 0.01, ease: 'none',
-    onUpdate: () => (sweep.value = state.year),
+    t: 1, duration: motionOn() ? Math.min(14, Math.max(5, clock.total / 6)) : 0.01, ease: 'none',
+    onUpdate: () => (sweep.value = clock.at(state.t)),
     onComplete: () => {
       sweepTween = null;
       setTimeout(() => { if (!sweepTween) sweep.value = null; }, 1200);
