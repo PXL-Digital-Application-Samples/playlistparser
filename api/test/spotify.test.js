@@ -24,3 +24,17 @@ test('getAllPaged fetches every page by offset and keeps order', async () => {
   assert.deepEqual([...requested].sort((a, b) => a - b), [0, 50, 100, 150, 200]);
   mock.restoreAll();
 });
+
+test('get with retry: false fails at once on a 429 and reports Retry-After', async () => {
+  let calls = 0;
+  mock.method(globalThis, 'fetch', async () => {
+    calls++;
+    return new Response('{}', { status: 429, headers: { 'Retry-After': '3' } });
+  });
+  const spotify = createSpotify({ clientId: 'a', clientSecret: 'b', redirectUri: 'http://127.0.0.1/cb' });
+  const started = Date.now();
+  await assert.rejects(spotify.get('/me', 'token', { retry: false }), (err) => err.status === 429 && err.retryAfter === 3);
+  assert.equal(calls, 1);
+  assert.ok(Date.now() - started < 1000);
+  mock.restoreAll();
+});

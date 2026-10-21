@@ -4,6 +4,8 @@ const API = 'https://api.spotify.com/v1';
 const ACCOUNTS = 'https://accounts.spotify.com';
 const MAX_RETRIES = 2;
 const MAX_RETRY_WAIT_MS = 10_000;
+// A request Spotify doesn't answer within this time fails instead of hanging.
+const TIMEOUT_MS = 15_000;
 
 // All read-only. Adding a scope means existing users must log in again.
 export const SCOPES = [
@@ -15,6 +17,16 @@ export const SCOPES = [
   'user-follow-read',
 ];
 const PAGE_CONCURRENCY = 4;
+
+// fetch with a timeout; a timeout is reported as a SpotifyError (504).
+async function timed(url, init) {
+  try {
+    return await fetch(url, { ...init, signal: AbortSignal.timeout(TIMEOUT_MS) });
+  } catch (err) {
+    if (err.name === 'TimeoutError') throw new SpotifyError(504, `Spotify did not answer within ${TIMEOUT_MS / 1000} s`);
+    throw err;
+  }
+}
 
 export class SpotifyError extends Error {
   constructor(status, message, retryAfter = null) {
@@ -29,7 +41,7 @@ export function createSpotify({ clientId, clientSecret, redirectUri }) {
   const basicAuth = 'Basic ' + Buffer.from(`${clientId}:${clientSecret}`).toString('base64');
 
   async function tokenRequest(params) {
-    const res = await fetch(`${ACCOUNTS}/api/token`, {
+    const res = await timed(`${ACCOUNTS}/api/token`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded', Authorization: basicAuth },
       body: new URLSearchParams(params),
@@ -41,16 +53,18 @@ export function createSpotify({ clientId, clientSecret, redirectUri }) {
     return body;
   }
 
-  async function get(pathOrUrl, accessToken) {
+  // retry: false fails at once on a 429 instead of waiting (for requests a
+  // person is waiting on, like the login).
+  async function get(pathOrUrl, accessToken, { retry = true } = {}) {
     const url = pathOrUrl.startsWith('http') ? pathOrUrl : `${API}${pathOrUrl}`;
     for (let attempt = 0; ; attempt++) {
-      const res = await fetch(url, { headers: { Authorization: `Bearer ${accessToken}` } });
+      const res = await timed(url, { headers: { Authorization: `Bearer ${accessToken}` } });
       if (res.ok) return res.json();
 
       if (res.status === 429) {
         const retryAfter = Number(res.headers.get('retry-after') || 1);
         const waitMs = retryAfter * 1000;
-        if (attempt < MAX_RETRIES && waitMs <= MAX_RETRY_WAIT_MS) {
+        if (retry && attempt < MAX_RETRIES && waitMs <= MAX_RETRY_WAIT_MS) {
           await new Promise((r) => setTimeout(r, waitMs * (attempt + 1)));
           continue;
         }

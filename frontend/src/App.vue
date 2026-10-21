@@ -38,7 +38,17 @@ const LOGIN_ERRORS = {
   user_not_allowed:
     'This Spotify account is not allowed to use this app. In development mode the app owner must add it under "User Management" in the Spotify dashboard.',
   spotify_login_failed: 'Spotify login failed. Check the API logs and Spotify app settings.',
+  spotify_timeout: "Spotify didn't answer in time. Please try again.",
 };
+
+// Spotify limits how many requests an app may make; after a big library sync
+// it can refuse logins for a while and says how long (retry_after, seconds).
+function rateLimitNotice(seconds) {
+  const s = Number(seconds);
+  if (!s) return 'Spotify is limiting requests from this app right now. Please try again in a few minutes.';
+  const wait = s < 90 ? `${Math.max(1, Math.round(s))} seconds` : s < 5400 ? `${Math.round(s / 60)} minutes` : `${Math.round(s / 3600)} hours`;
+  return `Spotify is limiting requests from this app right now. Please try again in about ${wait}.`;
+}
 
 // Logged out on any page other than the welcome page: go to the welcome
 // page, which has the (only) login button.
@@ -78,8 +88,11 @@ onMounted(() => {
   const params = new URLSearchParams(window.location.search);
   const loginError = params.get('login_error');
   if (loginError) {
-    notice.value = LOGIN_ERRORS[loginError] || `Login failed (${loginError}).`;
+    notice.value = loginError === 'spotify_rate_limited'
+      ? rateLimitNotice(params.get('retry_after'))
+      : LOGIN_ERRORS[loginError] || `Login failed (${loginError}).`;
     params.delete('login_error');
+    params.delete('retry_after');
     const qs = params.toString();
     window.history.replaceState(null, '', window.location.pathname + (qs ? `?${qs}` : ''));
   }

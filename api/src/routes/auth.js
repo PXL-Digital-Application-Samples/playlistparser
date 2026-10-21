@@ -15,9 +15,10 @@ export default async function authRoutes(fastify) {
     path: `${config.basePath}/auth`,
   };
 
-  const backToFrontend = (reply, error) => {
+  const backToFrontend = (reply, error, extra = {}) => {
     const url = new URL(config.frontendOrigin);
     if (error) url.searchParams.set('login_error', error);
+    for (const [k, v] of Object.entries(extra)) url.searchParams.set(k, String(v));
     return reply.redirect(url.href);
   };
 
@@ -37,17 +38,26 @@ export default async function authRoutes(fastify) {
       return backToFrontend(reply, 'bad_state');
     }
 
-    let tok, me;
+    // Someone is waiting on this page, so Spotify rate limits fail at once
+    // with a clear message instead of retrying silently for half a minute.
+    const t0 = Date.now();
+    let tok, me, exchangeMs;
     try {
       tok = await spotify.exchangeCode(code);
-      me = await spotify.get('/me', tok.access_token);
+      exchangeMs = Date.now() - t0;
+      me = await spotify.get('/me', tok.access_token, { retry: false });
     } catch (err) {
-      req.log.warn({ err }, 'spotify login failed');
+      req.log.warn({ err, ms: Date.now() - t0 }, 'spotify login failed');
+      if (err instanceof SpotifyError && err.status === 429) {
+        return backToFrontend(reply, 'spotify_rate_limited', err.retryAfter ? { retry_after: err.retryAfter } : {});
+      }
       // In development mode Spotify answers 403 for accounts that aren't
       // added under "User Management" in the developer dashboard.
-      const reason = err instanceof SpotifyError && err.status === 403 ? 'user_not_allowed' : 'spotify_login_failed';
+      const reason = err instanceof SpotifyError && err.status === 403 ? 'user_not_allowed'
+        : err instanceof SpotifyError && err.status === 504 ? 'spotify_timeout' : 'spotify_login_failed';
       return backToFrontend(reply, reason);
     }
+    const spotifyMs = Date.now() - t0;
 
     const user = await prisma.user.upsert({
       where: { spotifyId: me.id },
@@ -69,6 +79,7 @@ export default async function authRoutes(fastify) {
 
     const session = await createSession(prisma, user.id, config.sessionTtlDays);
     reply.setCookie(SESSION_COOKIE, session.id, cookieOptions(config, config.sessionTtlDays * 86_400));
+    req.log.info({ exchangeMs, meMs: spotifyMs - exchangeMs, totalMs: Date.now() - t0 }, 'login completed');
     return backToFrontend(reply);
   });
 
