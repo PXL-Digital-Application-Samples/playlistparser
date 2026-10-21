@@ -163,7 +163,7 @@ Not meant to be reachable from the internet or the browser: only the API needs t
 | `LASTFM_API_KEY` | no | | Enables Last.fm listener counts, tags and similar artists. |
 | `LASTFM_CACHE_DAYS` | no | `30` | How long Last.fm listener counts are cached. |
 | `BODY_LIMIT_MB` | no | `20` | Maximum request body (the API sends whole Liked Songs lists). |
-| `PORT` / `HOST` | no | `3001` / `0.0.0.0` | Listen address. |
+| `PORT` / `HOST` | no | `3001` / `127.0.0.1` | Listen address. Loopback by default because the service is internal: set `HOST=0.0.0.0` (or a private address) in containers or when the API runs elsewhere. |
 | `LOG_LEVEL` | no | `info` | Fastify/pino log level. |
 
 ### Frontend (`frontend/`)
