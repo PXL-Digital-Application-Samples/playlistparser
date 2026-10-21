@@ -81,7 +81,7 @@ const constellationRows = computed(() => {
     </section>
 
     <div v-if="lastfmOff" class="alert alert-warn" role="status">
-      Last.fm isn't configured on this server (LASTFM_API_KEY), so genres, taste eras and the artist constellation stay empty.
+      Last.fm isn't configured on the metadata service (LASTFM_API_KEY), so genres, taste eras and the artist constellation stay empty.
     </div>
 
     <template v-if="deep?.status === 'ok'">

@@ -14,8 +14,7 @@ import {
   followGap, savedAlbumsStats, podcastStats, likedOverlap, findUnplayable, briefArtist, briefTrack,
 } from '../src/lib/insights.js';
 import { soundMap, tasteEras, musicAtlas, constellation, topTags, classicalCorner } from '../src/lib/deep.js';
-import { summarizeListeners } from '../src/lib/lastfm.js';
-import { artistKey } from '../src/lib/enrich.js';
+import { summarizeListeners, artistKey } from '../src/lib/metadata.js';
 import {
   libraryOverview, crossPlaylistDuplicates, artistView, albumView, compareTracks, libraryArtistIds,
 } from '../src/lib/explore.js';

@@ -67,6 +67,12 @@ export function loadConfig(env = process.env) {
 
   const basePath = normalizeBasePath(env.API_BASE_PATH || '', errors);
 
+  // The internal metadata service (Last.fm, Deezer, MusicBrainz lookups).
+  const metadataUrl = required('METADATA_URL');
+  if (metadataUrl) checkUrl('METADATA_URL', metadataUrl, errors);
+  const metadataToken = required('METADATA_TOKEN');
+  if (metadataToken && metadataToken.length < 32) errors.push('METADATA_TOKEN must be at least 32 characters');
+
   const redirectUri = required('SPOTIFY_REDIRECT_URI');
   if (redirectUri && checkUrl('SPOTIFY_REDIRECT_URI', redirectUri, errors)) {
     const expected = `${basePath}/auth/callback`;
@@ -101,9 +107,10 @@ export function loadConfig(env = process.env) {
       clientSecret: required('SPOTIFY_CLIENT_SECRET'),
       redirectUri,
     },
-    lastfm: {
-      apiKey: env.LASTFM_API_KEY || null,
-      cacheDays: int('LASTFM_CACHE_DAYS', 30),
+    metadata: {
+      url: metadataUrl,
+      token: metadataToken,
+      timeoutMs: int('METADATA_TIMEOUT_MS', 10_000),
     },
   };
   required('DATABASE_URL');

@@ -1,16 +1,15 @@
 import { computeStats, findDuplicates } from '../lib/tracks.js';
 import { playlistCsvHeader, playlistCsvRows, csvFilename, joinCsv } from '../lib/csv.js';
-import { summarizeListeners } from '../lib/lastfm.js';
+import { summarizeListeners } from '../lib/metadata.js';
 import { LIKED_ID, isAnalyzable } from '../lib/library.js';
 import { splitLikes, artistDepth } from '../lib/insights.js';
 import { compareTracks } from '../lib/explore.js';
 
 const PLAYLIST_ID = /^[A-Za-z0-9]{1,64}$/;
 const LASTFM_EXPORT_BUDGET_MS = 3 * 60_000;
-const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 export default async function playlistRoutes(fastify) {
-  const { spotify, lastfm } = fastify;
+  const { spotify, metadata } = fastify;
   const auth = { preHandler: fastify.requireUser };
 
   const loadPlaylist = (user, id, accessToken) => fastify.library.load(user, id, accessToken);
@@ -35,7 +34,7 @@ export default async function playlistRoutes(fastify) {
   // ?lens=all keeps every song but counts each album save once for artists.
   fastify.get('/playlists/:id/stats', auth, async (req) => {
     const { info, tracks } = await playlistFor(req);
-    if (req.params.id !== LIKED_ID) return { playlist: info, ...computeStats(tracks), lastfm_status: lastfm.status };
+    if (req.params.id !== LIKED_ID) return { playlist: info, ...computeStats(tracks), lastfm_status: await metadata.lastfmStatus() };
 
     const lens = req.query.lens === 'all' ? 'all' : 'handpicked';
     const split = splitLikes(tracks);
@@ -48,7 +47,7 @@ export default async function playlistRoutes(fastify) {
       ...stats,
       lens,
       lens_counts: { handpicked: split.handpicked.length, all: tracks.length, album_saves: split.bulkGroups.length },
-      lastfm_status: lastfm.status,
+      lastfm_status: await metadata.lastfmStatus(),
     };
   });
 
@@ -57,14 +56,15 @@ export default async function playlistRoutes(fastify) {
     return findDuplicates(tracks);
   });
 
-  // Last.fm listener stats. Kicks off background lookups for uncached tracks
-  // and returns what is known so far; the frontend polls until `complete`.
+  // Last.fm listener stats. The metadata service starts lookups for uncached
+  // tracks and returns what is known so far; the frontend polls until `complete`.
   fastify.get('/playlists/:id/listeners', auth, async (req) => {
-    if (!lastfm.enabled) return { enabled: false, status: lastfm.status };
+    const lastfmStatus = await metadata.lastfmStatus();
+    if (lastfmStatus !== 'ok') return { enabled: false, status: lastfmStatus };
     const { tracks } = await playlistFor(req);
-    const eligible = new Set(tracks.filter((t) => t.id && !t.is_local && t.artists.length).map((t) => t.id));
-    lastfm.request(tracks).catch((err) => req.log.warn({ err }, 'last.fm request failed'));
-    const cached = await lastfm.getCached(tracks);
+    const eligible = new Set(tracks.filter((t) => t.id && !t.is_local && t.name && t.artists.length).map((t) => t.id));
+    const { status, cached } = await metadata.listeners(tracks);
+    if (status !== 'ok') return { enabled: false, status };
     return {
       enabled: true,
       complete: cached.size >= eligible.size,
@@ -76,7 +76,7 @@ export default async function playlistRoutes(fastify) {
 
   fastify.get('/playlists/:id/export', auth, async (req, reply) => {
     const { info, tracks } = await playlistFor(req);
-    const cached = lastfm.enabled ? await lastfm.getCached(tracks) : null;
+    const { cached } = await metadata.listeners(tracks);
     const csv = joinCsv(playlistCsvHeader(false), playlistCsvRows(tracks, { lastfm: cached }));
     return sendCsv(reply, csvFilename(req.user.spotifyId, info.name), csv);
   });
@@ -162,6 +162,7 @@ export default async function playlistRoutes(fastify) {
       // Last.fm lookups are slow (~4/s). Wait for them within a time budget so
       // the export finishes; tracks not looked up yet get empty Last.fm columns.
       const lastfmDeadline = Date.now() + LASTFM_EXPORT_BUDGET_MS;
+      const lastfmOn = (await metadata.lastfmStatus()) === 'ok';
       const rows = [];
       for (let i = 0; i < queue.length; i++) {
         const p = queue[i];
@@ -169,12 +170,11 @@ export default async function playlistRoutes(fastify) {
         // Re-check the token every playlist; large libraries can outlive it.
         const token = await fastify.accessTokenFor(user);
         const { info, tracks } = await loadPlaylist(user, p.id, token);
-        if (lastfm.enabled) {
-          const remaining = lastfmDeadline - Date.now();
-          const lookups = lastfm.request(tracks).catch(() => {});
-          if (remaining > 0) await Promise.race([lookups, sleep(Math.min(remaining, 60_000))]);
+        let cached = null;
+        if (lastfmOn) {
+          const remaining = Math.max(0, Math.min(lastfmDeadline - Date.now(), 60_000));
+          ({ cached } = await metadata.listeners(tracks, remaining));
         }
-        const cached = lastfm.enabled ? await lastfm.getCached(tracks) : null;
         rows.push(...playlistCsvRows(tracks, { playlist: info, lastfm: cached }));
       }
 

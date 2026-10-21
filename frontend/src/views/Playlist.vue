@@ -83,10 +83,13 @@ const lastfmProgress = computed(() => {
 const lastfmStatus = computed(() => listeners.value?.status || stats.value?.lastfm_status);
 const lastfmWarning = computed(() => {
   if (lastfmStatus.value === 'not_configured') {
-    return 'Last.fm is not configured on the API (LASTFM_API_KEY), so popularity stats are unavailable.';
+    return 'Last.fm is not configured on the metadata service (LASTFM_API_KEY), so popularity stats are unavailable.';
   }
   if (lastfmStatus.value === 'key_rejected') {
     return 'Last.fm rejected the API key (LASTFM_API_KEY), so popularity stats are unavailable.';
+  }
+  if (lastfmStatus.value === 'unavailable') {
+    return "The metadata service can't be reached right now, so popularity stats are unavailable.";
   }
   return null;
 });
@@ -249,7 +252,7 @@ async function loadAll() {
   watchSections();
 }
 
-// Last.fm lookups run in the background on the API; poll until complete.
+// Last.fm lookups run in the background on the metadata service; poll until complete.
 async function pollListeners(id) {
   try {
     const l = await endpoints.playlistListeners(id);

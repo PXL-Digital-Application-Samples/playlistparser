@@ -1,4 +1,3 @@
-import { artistKey } from '../lib/enrich.js';
 import { imageSizes } from '../lib/tracks.js';
 import { libraryOverview, crossPlaylistDuplicates, artistView, albumView, libraryArtistIds } from '../lib/explore.js';
 
@@ -17,8 +16,8 @@ export default async function libraryRoutes(fastify) {
 
   // Enrichment (Deezer tempo, Last.fm tags, MusicBrainz origins) runs after
   // each sync; these show its progress or start it again.
-  fastify.get('/library/enrichment', auth, async (req) => fastify.enricher.state(req.user.id));
-  fastify.post('/library/enrichment', auth, async (req) => fastify.enricher.start(req.user));
+  fastify.get('/library/enrichment', auth, async (req) => fastify.metadata.enrichmentState(req.user.id));
+  fastify.post('/library/enrichment', auth, async (req) => fastify.metadata.startEnrichment(req.user));
 
   async function synced(req) {
     const sources = await fastify.librarySync.load(req.user.id);
@@ -65,10 +64,11 @@ export default async function libraryRoutes(fastify) {
     if (missing) return missing;
     const libraryArtists = libraryArtistIds(sources);
     const base = artistView(sources, id, { libraryArtists });
-    const [info, spotify] = await Promise.all([
-      base.name ? fastify.prisma.artistInfo.findUnique({ where: { key: artistKey(base.name) } }) : null,
+    const [known, spotify] = await Promise.all([
+      base.name ? fastify.metadata.lookup({ artists: [base.name] }) : null,
       fromSpotify(req, `/artists/${id}`),
     ]);
+    const info = known?.artists[0] ?? null;
     const view = info ? artistView(sources, id, { info, libraryArtists }) : base;
     return {
       status: 'ok',

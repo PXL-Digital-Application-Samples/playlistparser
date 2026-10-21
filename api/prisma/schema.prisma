@@ -23,7 +23,6 @@ model User {
   exportJobs  ExportJob[]
   playlists   LibraryPlaylist[]
   librarySync LibrarySync?
-  enrichJobs  EnrichJob[]
 }
 
 model Token {
@@ -104,63 +103,4 @@ model LibrarySync {
   finishedAt DateTime?
   updatedAt  DateTime  @updatedAt
   user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-}
-
-// Cache of Last.fm track statistics, keyed by Spotify track id.
-// listeners/playcount are null when Last.fm doesn't know the track.
-model LastfmTrack {
-  spotifyTrackId String   @id
-  listeners      Int?
-  playcount      Int?
-  fetchedAt      DateTime @default(now())
-}
-
-// ---- Enrichment from public sources (shared by all users) --------------------
-
-// Tempo per recording from Deezer, keyed by ISRC. bpm is null when unknown.
-model DeezerTrack {
-  isrc      String   @id
-  bpm       Float?
-  fetchedAt DateTime @default(now())
-}
-
-// Per-artist facts, keyed by lower-cased artist name: Last.fm tags and similar
-// artists, MusicBrainz country/area/start year. Each source has its own
-// fetched-at timestamp (null = not looked up yet).
-model ArtistInfo {
-  key       String    @id
-  name      String
-  tags      Json?     // [{ name, count }]
-  similar   Json?     // [{ name, match }]
-  lastfmAt  DateTime?
-  mbid      String?
-  country   String?   // ISO 3166-1 alpha-2
-  area      String?
-  beginYear Int?
-  mbAt      DateTime?
-}
-
-// Composer and work for classical recordings (MusicBrainz), keyed by ISRC.
-model RecordingWork {
-  isrc      String   @id
-  work      String?
-  composer  String?
-  fetchedAt DateTime @default(now())
-}
-
-// Progress of a user's enrichment per source (deezer | lastfm | musicbrainz).
-model EnrichJob {
-  userId     String
-  source     String
-  status     String    // running | completed | error
-  total      Int       @default(0)
-  done       Int       @default(0)
-  failed     Int       @default(0)
-  error      String?
-  startedAt  DateTime  @default(now())
-  finishedAt DateTime?
-  updatedAt  DateTime  @updatedAt
-  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@id([userId, source])
 }

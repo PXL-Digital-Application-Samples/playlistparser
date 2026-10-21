@@ -12,6 +12,8 @@ const baseEnv = {
   SPOTIFY_CLIENT_ID: 'id',
   SPOTIFY_CLIENT_SECRET: 'secret',
   SPOTIFY_REDIRECT_URI: 'http://127.0.0.1:3000/auth/callback',
+  METADATA_URL: 'http://127.0.0.1:3001',
+  METADATA_TOKEN: 't'.repeat(32),
 };
 
 test('config: local defaults', () => {
@@ -42,6 +44,12 @@ test('config: reports every missing variable at once', () => {
   } catch (err) {
     assert.ok(err.configErrors.length >= 6);
   }
+});
+
+test('config: metadata service URL and token are checked', () => {
+  assert.throws(() => loadConfig({ ...baseEnv, METADATA_URL: 'metadata:3001' }), /METADATA_URL/);
+  assert.throws(() => loadConfig({ ...baseEnv, METADATA_TOKEN: 'short' }), /METADATA_TOKEN must be at least 32/);
+  assert.equal(loadConfig(baseEnv).metadata.timeoutMs, 10_000);
 });
 
 test('config: CORS origins must be bare origins and not *', () => {

@@ -11,17 +11,29 @@ A Spotify library analyzer: a Vue 3 frontend and a Fastify + Prisma API backed b
 | Component | Technology | Notes |
 |-----------|------------|-------|
 | `frontend/` | Vue 3, Vue Router, Vite | Static single-page app. Calls the API with cookies (`credentials: 'include'`). |
-| `api/` | Node.js 22+, Fastify 5, Prisma 7 (node-postgres driver adapter) | Spotify OAuth, statistics, CSV export, library sync, enrichment. Stateless: all state lives in PostgreSQL. |
-| Database | PostgreSQL | Users, sessions, encrypted Spotify tokens, export jobs, synced library, caches of public music data. |
+| `api/` | Node.js 22+, Fastify 5, Prisma 7 (node-postgres driver adapter) | Spotify OAuth, statistics, CSV export, library sync. The only service the browser talks to. Stateless: all state lives in PostgreSQL. |
+| `metadata/` | Node.js 22+, Fastify 5, Prisma 7 | **Internal** service for public music data: Last.fm listener counts, tags and similar artists, Deezer tempo and song previews, MusicBrainz origins and composers, and the enrichment jobs that look them up. Only the API calls it (with a shared token); it never sees user accounts or Spotify tokens. Stateless: its caches and job progress live in PostgreSQL. |
+| Database | PostgreSQL | API: users, sessions, encrypted Spotify tokens, export jobs, synced library. Metadata service: caches of public music data and enrichment progress, in its own schema (or database) with its own migrations. |
 
-External services the API talks to (outbound HTTPS):
+```text
+browser ──> frontend (static files)
+browser ──> api ──> Spotify
+             │
+             └──> metadata (internal) ──> Last.fm, Deezer, MusicBrainz
+             │         │
+             └─> PostgreSQL <─┘   (separate schemas)
+```
 
-- **Spotify Web API** (`accounts.spotify.com`, `api.spotify.com`): required.
-- **Last.fm API** (`ws.audioscrobbler.com`): optional (`LASTFM_API_KEY`): listener counts, artist tags and similar artists.
-- **Deezer API** (`api.deezer.com`): no key: song tempo (BPM).
-- **MusicBrainz** (`musicbrainz.org`): no key: artist countries, composers of classical recordings.
+External services (outbound HTTPS):
 
-Library-wide data is copied to the database by a background **library sync** (only playlists that changed are re-read), followed by a background **enrichment** job that looks up public data per song and artist. Both report progress in the UI, are shared by all API instances, and are rate-limited per service (MusicBrainz allows one request per second, so the first enrichment of a large library takes 10–15 minutes).
+- **Spotify Web API** (`accounts.spotify.com`, `api.spotify.com`), from the API: required.
+- **Last.fm API** (`ws.audioscrobbler.com`), from the metadata service: optional (`LASTFM_API_KEY`): listener counts, artist tags and similar artists.
+- **Deezer API** (`api.deezer.com`), from the metadata service: no key: song tempo (BPM) and 30-second previews.
+- **MusicBrainz** (`musicbrainz.org`), from the metadata service: no key: artist countries, composers of classical recordings.
+
+Library-wide data is copied to the database by a background **library sync** in the API (only playlists that changed are re-read). After each sync the API sends the Liked Songs to the metadata service, which runs a background **enrichment** job that looks up public data per song and artist. Both report progress in the UI, are shared by all instances, and the lookups are rate-limited per service (MusicBrainz allows one request per second, so the first enrichment of a large library takes 10–15 minutes).
+
+When the metadata service is down, the app keeps working: pages show their Spotify-based statistics, and the parts that need public music data (listener counts, tempo, genres, origins, previews) say they're unavailable.
 
 ## Features
 
@@ -98,13 +110,13 @@ The app requests these read-only scopes: `playlist-read-private`, `playlist-read
 
 ## Last.fm setup (optional)
 
-Create an API account at <https://www.last.fm/api/account/create> (the callback URL can stay empty) and set `LASTFM_API_KEY`. Without it the app still works, but listener counts, genre tags and similar artists are missing: the playlist page and the Insights Discover page say so, and the taste eras, genres, artist constellation and similar artists stay empty. The key is a server-side secret: it belongs in the API's environment, never in the frontend build.
+Create an API account at <https://www.last.fm/api/account/create> (the callback URL can stay empty) and set `LASTFM_API_KEY` for the **metadata service**. Without it the app still works, but listener counts, genre tags and similar artists are missing: the playlist page and the Insights Discover page say so, and the taste eras, genres, artist constellation and similar artists stay empty. The key is a server-side secret: it belongs in the metadata service's environment, never in the frontend build.
 
-Deezer and MusicBrainz need no account or configuration; the API only needs outbound internet access to them.
+Deezer and MusicBrainz need no account or configuration; the metadata service only needs outbound internet access to them.
 
 ## Configuration
 
-Everything that differs between environments is configured with environment variables; no code changes are needed. The API validates its configuration at startup and exits with a list of everything that is wrong.
+Everything that differs between environments is configured with environment variables; no code changes are needed. The API and the metadata service validate their configuration at startup and exit with a list of everything that is wrong.
 
 ### API (`api/`)
 
@@ -128,8 +140,9 @@ Everything that differs between environments is configured with environment vari
 | `PORT` / `HOST` | no | `3000` / `0.0.0.0` | Listen address. |
 | `LOG_LEVEL` | no | `info` | Fastify/pino log level. |
 | `NODE_ENV` | no | | `production` or `development`. |
-| `LASTFM_API_KEY` | no | | Enables Last.fm listener counts, tags and similar artists. |
-| `LASTFM_CACHE_DAYS` | no | `30` | How long Last.fm listener counts are cached. |
+| `METADATA_URL` | yes | | Base URL of the metadata service as the API reaches it, e.g. `http://metadata:3001` (a path prefix is kept). |
+| `METADATA_TOKEN` | yes | | Shared secret sent to the metadata service. Same value as its `METADATA_TOKEN`; at least 32 characters. |
+| `METADATA_TIMEOUT_MS` | no | `10000` | How long the API waits for the metadata service before answering without its data. |
 
 Generate secrets with:
 
@@ -139,6 +152,20 @@ node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 
 Some things to know about cookies: the session cookie is set by the **API's** host. Browsers only send it along with the frontend's API calls when the cookie settings fit how the frontend and API are hosted relative to each other (same origin, same site, or cross-site). Check the API's `configuration` log line at startup to see the effective values.
 
+### Metadata service (`metadata/`)
+
+Not meant to be reachable from the internet or the browser: only the API needs to reach it. `/healthz`, `/readyz` and `/metrics` are open (for probes); every other route needs `Authorization: Bearer <METADATA_TOKEN>`.
+
+| Variable | Required | Default | Description |
+|----------|----------|---------|-------------|
+| `DATABASE_URL` | yes | | PostgreSQL connection string for its own tables. It can share a server, or even the API's database with another schema (`?schema=metadata`), but never the API's schema. |
+| `METADATA_TOKEN` | yes | | Shared secret; requests from the API must carry it. At least 32 characters. |
+| `LASTFM_API_KEY` | no | | Enables Last.fm listener counts, tags and similar artists. |
+| `LASTFM_CACHE_DAYS` | no | `30` | How long Last.fm listener counts are cached. |
+| `BODY_LIMIT_MB` | no | `20` | Maximum request body (the API sends whole Liked Songs lists). |
+| `PORT` / `HOST` | no | `3001` / `0.0.0.0` | Listen address. |
+| `LOG_LEVEL` | no | `info` | Fastify/pino log level. |
+
 ### Frontend (`frontend/`)
 
 | Variable | Default | Description |
@@ -147,7 +174,7 @@ Some things to know about cookies: the session cookie is set by the **API's** ho
 
 ### Database
 
-Apply migrations with `npm run db:migrate` (runs `prisma migrate deploy`) in `api/` before starting the API, and again after every update. The Prisma client must be generated (`npm run db:generate`) after installing dependencies. Both need the `prisma` CLI (a dev dependency) and read `api/prisma.config.js`; `db:migrate` also needs `DATABASE_URL`. Prisma 7 has no native query engine, so no OpenSSL or other system libraries are required.
+The API and the metadata service each have their own migrations. Apply them with `npm run db:migrate` (runs `prisma migrate deploy`) in `api/` and in `metadata/` before starting each service, and again after every update. The Prisma client must be generated (`npm run db:generate`) after installing dependencies. Both need the `prisma` CLI (a dev dependency) and read the service's `prisma.config.js`; `db:migrate` also needs `DATABASE_URL`. Prisma 7 has no native query engine, so no OpenSSL or other system libraries are required.
 
 ## API endpoints
 
@@ -187,12 +214,31 @@ GET  /library/duplicates                 the same recording in two or more playl
 GET  /library/artists/:id                everything in the library by one artist (Spotify artist id)
 GET  /library/albums/:id                 your songs from one album, with its track list (Spotify album id)
 
+GET  /preview?isrc=&title=&artist=       Deezer preview link for the record player (via the metadata service)
+
 GET  /healthz                            liveness (no database check)
 GET  /readyz                             readiness (checks the database)
 GET  /metrics                            Prometheus metrics
 ```
 
 Under `/playlists`, `:id` is a Spotify playlist id, or `liked` for the user's Liked Songs. `POST` requests must use `Content-Type: application/json`. The API closes gracefully on `SIGTERM`.
+
+### Metadata service endpoints (internal)
+
+Called only by the API, with `Authorization: Bearer <METADATA_TOKEN>` (except the probes):
+
+```text
+GET  /status                             Last.fm state: ok | not_configured | key_rejected
+POST /lookup                             cached tempo, artist facts, listener counts and works for lists of ISRCs, artist names and track ids
+POST /listeners                          Last.fm listener counts for tracks; starts lookups for uncached ones (optionally waits)
+GET  /enrichment/:userId                 enrichment progress per source
+POST /enrichment/:userId                 start enrichment for the tracks in the body
+GET  /preview?isrc=&title=&artist=       Deezer preview link and tempo
+
+GET  /healthz                            liveness (no database check)
+GET  /readyz                             readiness (checks the database)
+GET  /metrics                            Prometheus metrics
+```
 
 ## Local development
 
@@ -202,15 +248,23 @@ Requirements: Node.js 22.9+ and Docker (for PostgreSQL only).
 # 1. Database
 docker compose up -d
 
-# 2. API (http://127.0.0.1:3000)
-cd api
-cp .env.example .env      # fill in Spotify credentials and generate the secrets
+# 2. Metadata service (http://127.0.0.1:3001)
+cd metadata
+cp .env.example .env      # generate METADATA_TOKEN, optionally add LASTFM_API_KEY
 npm install
 npm run db:generate
 npm run db:migrate
 npm run dev
 
-# 3. Frontend (http://127.0.0.1:5173), in a second terminal
+# 3. API (http://127.0.0.1:3000), in a second terminal
+cd api
+cp .env.example .env      # Spotify credentials, secrets, and the same METADATA_TOKEN
+npm install
+npm run db:generate
+npm run db:migrate
+npm run dev
+
+# 4. Frontend (http://127.0.0.1:5173), in a third terminal
 cd frontend
 cp .env.example .env
 npm install
@@ -221,7 +275,7 @@ Open <http://127.0.0.1:5173> (not `localhost`; the Spotify redirect and the cook
 
 <img src="assets/welcome.png" alt="Welcome page with the Log in with Spotify button" width="800">
 
-Run the API unit tests with `npm test` in `api/`.
+Run the unit tests with `npm test` in `api/` and in `metadata/`.
 
 ### Demo mode
 

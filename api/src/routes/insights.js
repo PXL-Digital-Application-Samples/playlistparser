@@ -1,6 +1,6 @@
 import { computeStats } from '../lib/tracks.js';
 import { LIKED_ID } from '../lib/library.js';
-import { artistKey } from '../lib/enrich.js';
+import { artistKey } from '../lib/metadata.js';
 import { soundMap, tasteEras, musicAtlas, constellation, topTags, classicalCorner } from '../lib/deep.js';
 import {
   splitLikes, likeCalendar, libraryOverTime, musicAge, artistDepth, albumWall, tasteProfile,
@@ -157,7 +157,7 @@ export default async function insightsRoutes(fastify) {
       where: { userId_playlistId: { userId: req.user.id, playlistId: LIKED_ID } },
       select: { tracks: true, status: true },
     });
-    const enrichment = await fastify.enricher.state(req.user.id);
+    const enrichment = await fastify.metadata.enrichmentState(req.user.id);
     if (row?.status !== 'ok') return { status: 'not_synced', enrichment };
 
     const tracks = row.tracks.filter((t) => t.id && t.type !== 'episode');
@@ -168,12 +168,8 @@ export default async function insightsRoutes(fastify) {
 
     const isrcs = [...new Set(tracks.map((t) => t.isrc).filter(Boolean))];
     const names = [...new Set(tracks.flatMap((t) => t.artists.map((a) => artistKey(a.name))))];
-    const [bpmRows, artistRows, listenerRows, workRows] = await Promise.all([
-      prisma.deezerTrack.findMany({ where: { isrc: { in: isrcs } } }),
-      prisma.artistInfo.findMany({ where: { key: { in: names } } }),
-      prisma.lastfmTrack.findMany({ where: { spotifyTrackId: { in: tracks.map((t) => t.id) } } }),
-      prisma.recordingWork.findMany({ where: { isrc: { in: isrcs } } }),
-    ]);
+    const { tempo: bpmRows, artists: artistRows, listeners: listenerRows, works: workRows } =
+      await fastify.metadata.lookup({ isrcs, artists: names, trackIds: tracks.map((t) => t.id) });
     const bpm = new Map(bpmRows.filter((r) => r.bpm).map((r) => [r.isrc, r.bpm]));
     const artists = new Map(artistRows.map((r) => [r.key, r]));
     const listeners = new Map(listenerRows.filter((r) => r.listeners !== null).map((r) => [r.spotifyTrackId, r.listeners]));

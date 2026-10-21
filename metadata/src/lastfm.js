@@ -1,6 +1,6 @@
 // Last.fm listener/playcount lookups, used as a popularity signal because
 // Spotify removed `popularity` in 2026. Results are cached in Postgres so all
-// API instances share them. Lookups go through one throttled queue per
+// instances share them. Lookups go through one throttled queue per
 // process to respect Last.fm's ~5 requests/second guideline.
 
 import { limiter } from './ratelimit.js';
@@ -16,7 +16,8 @@ export function createLastfm({ apiKey, cacheDays }, prisma, log) {
   let working = false;
   let keyRejected = false;
 
-  const eligible = (t) => t.id && !t.is_local && t.name && t.artists.length;
+  // Tracks arrive as { id, name, artist } with the first artist's name.
+  const eligible = (t) => t && typeof t.id === 'string' && t.name && t.artist;
 
   async function getCached(tracks) {
     const ids = [...new Set(tracks.filter(eligible).map((t) => t.id))];
@@ -82,7 +83,7 @@ export function createLastfm({ apiKey, cacheDays }, prisma, log) {
   // Returns { listeners, playcount } (nulls when unknown) or undefined when
   // the lookup failed and shouldn't be cached.
   async function lookup(track) {
-    const artist = track.artists[0].name;
+    const { artist } = track;
     let res = await call(artist, track.name);
     if (res === null && / - /.test(track.name)) {
       // "Song - Remastered 2011" style names: retry with the base title.
@@ -141,21 +142,4 @@ function toInt(v) {
 
 function sleep(ms) {
   return new Promise((r) => setTimeout(r, ms));
-}
-
-export function summarizeListeners(tracks, cached) {
-  const rows = tracks
-    .filter((t) => t.id && cached.has(t.id) && cached.get(t.id).listeners !== null)
-    .map((t) => ({ id: t.id, name: t.name, artists: t.artists, ...cached.get(t.id) }));
-  const uniq = [...new Map(rows.map((r) => [r.id, r])).values()];
-  const sorted = [...uniq].sort((a, b) => b.listeners - a.listeners);
-  const listeners = sorted.map((r) => r.listeners);
-  return {
-    matched: uniq.length,
-    by_track: Object.fromEntries(uniq.map((r) => [r.id, { listeners: r.listeners, playcount: r.playcount }])),
-    avg_listeners: listeners.length ? Math.round(listeners.reduce((a, b) => a + b, 0) / listeners.length) : null,
-    median_listeners: listeners.length ? listeners[Math.floor(listeners.length / 2)] : null,
-    most_listened: sorted.slice(0, 5),
-    hidden_gems: sorted.slice(-5).reverse(),
-  };
 }

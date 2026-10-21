@@ -1,15 +1,14 @@
-// Enrichment: looks up public facts about the songs and artists in a user's
-// synced Liked Songs, in the background, and caches them for everyone:
+// Enrichment: looks up public facts about the songs and artists the API sends
+// (a user's Liked Songs), in the background, and caches them for everyone:
 //   deezer      -> tempo (BPM) per recording, by ISRC (no key needed)
 //   lastfm      -> tags and similar artists per artist (needs LASTFM_API_KEY)
 //   musicbrainz -> country / start year per artist, and composer + work for
 //                  classical recordings (no key; 1 request per second)
-// Each source runs as its own job with progress in EnrichJob, so any API
+// Each source runs as its own job with progress in EnrichJob, so any
 // instance can report it. Lookups that fail are counted and retried on the
 // next run; nothing is cached for them.
 import { limiter } from './ratelimit.js';
 import { lastfmLimit } from './lastfm.js';
-import { LIKED_ID } from './library.js';
 
 const STALL_MS = 2 * 60_000;
 const REFRESH_DAYS = 90;
@@ -43,16 +42,16 @@ export function createEnricher({ prisma, config, log }) {
     }
   }
 
-  async function start(user) {
-    const tracks = await likedTracks(user.id);
-    if (!tracks.length) return state(user.id);
+  // tracks: [{ isrc, artists: [name] }], sent by the API.
+  async function start(userId, tracks) {
+    if (!tracks.length) return state(userId);
     for (const source of SOURCES) {
       if (source === 'lastfm' && !lastfmKey) continue;
-      if (await claim(user.id, source)) {
-        RUNNERS[source](user.id, tracks).catch((err) => log.error({ err, source }, 'enrichment crashed'));
+      if (await claim(userId, source)) {
+        RUNNERS[source](userId, tracks).catch((err) => log.error({ err, source }, 'enrichment crashed'));
       }
     }
-    return state(user.id);
+    return state(userId);
   }
 
   async function state(userId) {
@@ -69,14 +68,6 @@ export function createEnricher({ prisma, config, log }) {
       };
     }
     return out;
-  }
-
-  async function likedTracks(userId) {
-    const row = await prisma.libraryPlaylist.findUnique({
-      where: { userId_playlistId: { userId, playlistId: LIKED_ID } },
-      select: { tracks: true, status: true },
-    });
-    return row?.status === 'ok' ? row.tracks.filter((t) => t.id && t.type !== 'episode') : [];
   }
 
   // Runs `fn` for every item, reporting progress at most every 2 seconds.
@@ -157,7 +148,7 @@ export function createEnricher({ prisma, config, log }) {
     // Composer lookups only for recordings by artists Last.fm tags as classical.
     const infos = await prisma.artistInfo.findMany({ where: { key: { in: names.map(artistKey) } }, select: { key: true, tags: true } });
     const classical = new Set(infos.filter((i) => (i.tags || []).some((t) => CLASSICAL_TAGS.some((c) => t.name.includes(c)))).map((i) => i.key));
-    const isrcs = [...new Set(tracks.filter((t) => t.isrc && t.artists.some((a) => classical.has(artistKey(a.name)))).map((t) => t.isrc))];
+    const isrcs = [...new Set(tracks.filter((t) => t.isrc && t.artists.some((a) => classical.has(artistKey(a)))).map((t) => t.isrc))];
     const knownWorks = new Set((await prisma.recordingWork.findMany({ where: { isrc: { in: isrcs } }, select: { isrc: true } })).map((r) => r.isrc));
     // All of them in one run (no per-run cap): a cap made the job come back
     // on every sync until the backlog was gone. Origins go first.
@@ -213,7 +204,7 @@ export function createEnricher({ prisma, config, log }) {
 
 function uniqueArtists(tracks) {
   const byKey = new Map();
-  for (const t of tracks) for (const a of t.artists) if (a.name) byKey.set(artistKey(a.name), a.name);
+  for (const t of tracks) for (const a of t.artists) if (a) byKey.set(artistKey(a), a);
   return [...byKey.values()];
 }
 
