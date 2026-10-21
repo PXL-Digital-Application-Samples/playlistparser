@@ -14,6 +14,9 @@ const pending = ref(false);
 const slow = ref(false);
 let slowTimer = 0;
 function startLogin(e) {
+  // Ctrl/Cmd/Shift/Alt-click opens the login in another tab or window: this
+  // page stays as it is.
+  if (e.button !== 0 || e.ctrlKey || e.metaKey || e.shiftKey || e.altKey) return;
   if (pending.value) return e.preventDefault();
   pending.value = true;
   slowTimer = setTimeout(() => (slow.value = true), 6000);

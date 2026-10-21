@@ -34,7 +34,9 @@ export function loadConfig(env = process.env) {
   }
 
   const config = {
-    host: env.HOST || '0.0.0.0',
+    // Loopback by default: this service is internal. Containers and other
+    // hosts must set HOST=0.0.0.0 (or a private address) explicitly.
+    host: env.HOST || '127.0.0.1',
     port: int('PORT', 3001),
     logLevel: env.LOG_LEVEL || 'info',
     token,

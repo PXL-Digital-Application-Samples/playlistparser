@@ -242,7 +242,7 @@ async function loadAll() {
     contents.value = c;
     stats.value = s;
     dedupe.value = d;
-    if (s.lastfm_status === 'ok') pollListeners(props.id);
+    if (s.lastfm_status === 'ok' || s.lastfm_status === 'unavailable') pollListeners(props.id);
   } catch (e) {
     error.value = describeError(e);
   } finally {
@@ -252,13 +252,17 @@ async function loadAll() {
   watchSections();
 }
 
-// Last.fm lookups run in the background on the metadata service; poll until complete.
-async function pollListeners(id) {
+// Last.fm lookups run in the background on the metadata service; poll until
+// complete. Only the first poll (and every 20th, in case the service restarted
+// and lost its queue) asks for lookups; the others just read what's known.
+// While the service is unreachable, check again every 10 seconds.
+async function pollListeners(id, n = 0) {
   try {
-    const l = await endpoints.playlistListeners(id);
+    const l = await endpoints.playlistListeners(id, { queue: n % 20 === 0 });
     if (id !== props.id) return;
     listeners.value = l;
-    if (l.enabled && !l.complete) listenersTimer = setTimeout(() => pollListeners(id), 3000);
+    if (l.enabled && !l.complete) listenersTimer = setTimeout(() => pollListeners(id, n + 1), 3000);
+    else if (!l.enabled && l.status === 'unavailable') listenersTimer = setTimeout(() => pollListeners(id, 0), 10_000);
   } catch {
     // Popularity stats are optional; ignore failures.
   }

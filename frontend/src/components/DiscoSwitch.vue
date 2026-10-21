@@ -1,6 +1,5 @@
 <script setup>
 import { disco, toggleDisco } from '../disco.js';
-import { calm } from '../motion.js';
 </script>
 
 <template>
@@ -9,8 +8,7 @@ import { calm } from '../motion.js';
     role="switch"
     class="disco-switch"
     :aria-checked="disco"
-    :disabled="calm"
-    :title="calm ? 'Turn off Zen mode to party' : 'Or type ↑ ↑ ↓ ↓ ← → ← → B A'"
+    title="Or type ↑ ↑ ↓ ↓ ← → ← → B A"
     @click="toggleDisco"
   >
     <span class="track" aria-hidden="true"><span class="thumb"></span></span>
@@ -24,8 +22,7 @@ import { calm } from '../motion.js';
   font: inherit; font-size: 13px; font-weight: 600; color: var(--muted);
   background: none; border: none; padding: 0; cursor: pointer;
 }
-.disco-switch:hover:not(:disabled) { color: var(--text); }
-.disco-switch:disabled { opacity: 0.5; cursor: not-allowed; }
+.disco-switch:hover { color: var(--text); }
 .track {
   position: relative; width: 30px; height: 18px; border-radius: 999px; flex: none;
   background: var(--surface-muted); border: 1px solid var(--border-strong);

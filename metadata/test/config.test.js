@@ -10,6 +10,7 @@ const baseEnv = {
 test('config: defaults and the schema from DATABASE_URL', () => {
   const c = loadConfig(baseEnv);
   assert.equal(c.port, 3001);
+  assert.equal(c.host, '127.0.0.1');
   assert.equal(c.dbSchema, 'metadata');
   assert.equal(c.lastfm.apiKey, null);
   assert.equal(c.lastfm.cacheDays, 30);

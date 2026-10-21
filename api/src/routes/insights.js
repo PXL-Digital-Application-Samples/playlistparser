@@ -1,6 +1,6 @@
 import { computeStats } from '../lib/tracks.js';
 import { LIKED_ID } from '../lib/library.js';
-import { artistKey } from '../lib/metadata.js';
+import { artistKey } from '../lib/deep.js';
 import { soundMap, tasteEras, musicAtlas, constellation, topTags, classicalCorner } from '../lib/deep.js';
 import {
   splitLikes, likeCalendar, libraryOverTime, musicAge, artistDepth, albumWall, tasteProfile,
@@ -167,11 +167,11 @@ export default async function insightsRoutes(fastify) {
     const events = lens === 'all' ? split.events : split.handpicked;
 
     const isrcs = [...new Set(tracks.map((t) => t.isrc).filter(Boolean))];
-    const names = [...new Set(tracks.flatMap((t) => t.artists.map((a) => artistKey(a.name))))];
-    const { tempo: bpmRows, artists: artistRows, listeners: listenerRows, works: workRows } =
+    const names = [...new Set(tracks.flatMap((t) => t.artists.map((a) => a.name).filter(Boolean)))];
+    const { tempo: bpmRows, artists: artistsByName, listeners: listenerRows, works: workRows } =
       await fastify.metadata.lookup({ isrcs, artists: names, trackIds: tracks.map((t) => t.id) });
     const bpm = new Map(bpmRows.filter((r) => r.bpm).map((r) => [r.isrc, r.bpm]));
-    const artists = new Map(artistRows.map((r) => [r.key, r]));
+    const artists = new Map(Object.entries(artistsByName).map(([n, r]) => [artistKey(n), r]));
     const listeners = new Map(listenerRows.filter((r) => r.listeners !== null).map((r) => [r.spotifyTrackId, r.listeners]));
     const works = new Map(workRows.map((r) => [r.isrc, r]));
 

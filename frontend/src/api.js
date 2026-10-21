@@ -55,7 +55,7 @@ export const endpoints = {
   playlists: () => get('/me/playlists'),
   playlistContents: (id) => get(`/playlists/${enc(id)}/contents`),
   playlistStats: (id, lens) => get(`/playlists/${enc(id)}/stats${lens ? `?lens=${enc(lens)}` : ''}`),
-  playlistListeners: (id) => get(`/playlists/${enc(id)}/listeners`),
+  playlistListeners: (id, { queue = true } = {}) => get(`/playlists/${enc(id)}/listeners${queue ? '' : '?queue=0'}`),
   simulateDedupe: (id) => get(`/playlists/${enc(id)}/simulate-dedupe`),
   simulateMerge: (a, b) => get(`/simulate-merge?a=${enc(a)}&b=${enc(b)}`),
   exportPlaylistUrl: (id) => `${BASE}/playlists/${enc(id)}/export`,

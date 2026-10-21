@@ -29,19 +29,27 @@ test('metadata client: sends the token, keeps a path prefix, maps listeners', as
     { id: 'a', name: 'Song', artists: [{ name: 'Band' }] }, // duplicate
     { id: null, name: 'Local', artists: [{ name: 'Me' }], is_local: true },
   ];
-  const { status, cached } = await md.listeners(tracks, 500);
+  const { status, cached } = await md.listeners(tracks, { waitMs: 500 });
   svc.close();
   assert.equal(status, 'ok');
   assert.deepEqual(cached.get('a'), { listeners: 5, playcount: 9 });
   assert.equal(svc.seen[0].url, '/prefix/listeners');
   assert.equal(svc.seen[0].auth, 'Bearer secret');
-  assert.deepEqual(svc.seen[0].body, { tracks: [{ id: 'a', name: 'Song', artist: 'Band' }], wait_ms: 500 });
+  assert.deepEqual(svc.seen[0].body, { tracks: [{ id: 'a', name: 'Song', artist: 'Band' }], queue: true, wait_ms: 500 });
+});
+
+test('metadata client: polls without queueing send ids only', async () => {
+  const svc = await fakeService(() => [200, { status: 'ok', listeners: {} }]);
+  const md = createMetadata({ url: svc.url, token: 'secret', timeoutMs: 2000 }, { log: silent });
+  await md.listeners([{ id: 'a', name: 'Song', artists: [{ name: 'Band' }] }], { queue: false });
+  svc.close();
+  assert.deepEqual(svc.seen[0].body, { tracks: [{ id: 'a' }], queue: false, wait_ms: 0 });
 });
 
 test('metadata client: pages still work when the service fails', async () => {
   const svc = await fakeService(() => [500, { error: 'internal_error' }]);
   const md = createMetadata({ url: svc.url, token: 'secret', timeoutMs: 2000 }, { log: silent });
-  assert.deepEqual(await md.lookup({ isrcs: ['X'] }), { tempo: [], artists: [], listeners: [], works: [] });
+  assert.deepEqual(await md.lookup({ isrcs: ['X'] }), { tempo: [], artists: {}, listeners: [], works: [] });
   assert.equal(await md.lastfmStatus(), 'unavailable');
   const state = await md.enrichmentState('user1');
   assert.deepEqual(Object.keys(state), ['deezer', 'lastfm', 'musicbrainz']);

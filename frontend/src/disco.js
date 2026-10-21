@@ -1,6 +1,6 @@
 import { ref, watch } from 'vue';
 import { gsap } from 'gsap';
-import { calm } from './motion.js';
+import { calm, setCalm } from './motion.js';
 import { bpm as playerBpm, status } from './player.js';
 
 // Disco mode: the interface bounces on the beat (the playing song's tempo,
@@ -45,8 +45,14 @@ watch([disco, calm], ([on, c]) => {
   if (disco.value) onBeat();
 });
 
+// Asking for disco while Zen mode is on is a clear choice for motion: Zen
+// mode turns off and the party starts. (Turning Zen mode on stops disco.)
 export function toggleDisco() {
-  if (calm.value) return;
+  if (calm.value) {
+    setCalm(false);
+    disco.value = true;
+    return;
+  }
   disco.value = !disco.value;
 }
 

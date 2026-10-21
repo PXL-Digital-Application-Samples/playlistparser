@@ -57,13 +57,15 @@ export default async function playlistRoutes(fastify) {
   });
 
   // Last.fm listener stats. The metadata service starts lookups for uncached
-  // tracks and returns what is known so far; the frontend polls until `complete`.
+  // tracks and returns what is known so far; the frontend polls until
+  // `complete`. Polls with ?queue=0 only read the cache (ids only), so a large
+  // library isn't sent in full every few seconds.
   fastify.get('/playlists/:id/listeners', auth, async (req) => {
     const lastfmStatus = await metadata.lastfmStatus();
     if (lastfmStatus !== 'ok') return { enabled: false, status: lastfmStatus };
     const { tracks } = await playlistFor(req);
     const eligible = new Set(tracks.filter((t) => t.id && !t.is_local && t.name && t.artists.length).map((t) => t.id));
-    const { status, cached } = await metadata.listeners(tracks);
+    const { status, cached } = await metadata.listeners(tracks, { queue: req.query.queue !== '0' });
     if (status !== 'ok') return { enabled: false, status };
     return {
       enabled: true,
@@ -76,7 +78,7 @@ export default async function playlistRoutes(fastify) {
 
   fastify.get('/playlists/:id/export', auth, async (req, reply) => {
     const { info, tracks } = await playlistFor(req);
-    const { cached } = await metadata.listeners(tracks);
+    const { cached } = await metadata.listeners(tracks, { queue: false }); // what's known; no new lookups
     const csv = joinCsv(playlistCsvHeader(false), playlistCsvRows(tracks, { lastfm: cached }));
     return sendCsv(reply, csvFilename(req.user.spotifyId, info.name), csv);
   });
@@ -173,7 +175,7 @@ export default async function playlistRoutes(fastify) {
         let cached = null;
         if (lastfmOn) {
           const remaining = Math.max(0, Math.min(lastfmDeadline - Date.now(), 60_000));
-          ({ cached } = await metadata.listeners(tracks, remaining));
+          ({ cached } = await metadata.listeners(tracks, { waitMs: remaining }));
         }
         rows.push(...playlistCsvRows(tracks, { playlist: info, lastfm: cached }));
       }

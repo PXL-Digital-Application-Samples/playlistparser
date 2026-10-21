@@ -68,7 +68,7 @@ export default async function libraryRoutes(fastify) {
       base.name ? fastify.metadata.lookup({ artists: [base.name] }) : null,
       fromSpotify(req, `/artists/${id}`),
     ]);
-    const info = known?.artists[0] ?? null;
+    const info = known?.artists[base.name] ?? null;
     const view = info ? artistView(sources, id, { info, libraryArtists }) : base;
     return {
       status: 'ok',

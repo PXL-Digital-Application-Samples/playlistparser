@@ -2,7 +2,9 @@
 // data (Deezer BPM, Last.fm tags/similar artists, MusicBrainz origins and
 // composers). Pure functions: callers pass in the looked-up maps.
 import { parseReleaseDate } from './tracks.js';
-import { artistKey } from './metadata.js';
+
+// Key for the per-artist maps built from lookup results.
+export const artistKey = (name) => name.trim().toLowerCase();
 
 // Broad genre families derived from Last.fm tags (first match wins).
 export const FAMILIES = [

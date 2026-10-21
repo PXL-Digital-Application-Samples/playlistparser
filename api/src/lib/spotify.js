@@ -28,6 +28,16 @@ async function timed(url, init) {
   }
 }
 
+// The timeout also covers reading the body; report it the same way.
+async function readJson(res) {
+  try {
+    return await res.json();
+  } catch (err) {
+    if (err.name === 'TimeoutError' || err.name === 'AbortError') throw new SpotifyError(504, `Spotify did not answer within ${TIMEOUT_MS / 1000} s`);
+    throw err;
+  }
+}
+
 export class SpotifyError extends Error {
   constructor(status, message, retryAfter = null) {
     super(message);
@@ -59,7 +69,7 @@ export function createSpotify({ clientId, clientSecret, redirectUri }) {
     const url = pathOrUrl.startsWith('http') ? pathOrUrl : `${API}${pathOrUrl}`;
     for (let attempt = 0; ; attempt++) {
       const res = await timed(url, { headers: { Authorization: `Bearer ${accessToken}` } });
-      if (res.ok) return res.json();
+      if (res.ok) return readJson(res);
 
       if (res.status === 429) {
         const retryAfter = Number(res.headers.get('retry-after') || 1);

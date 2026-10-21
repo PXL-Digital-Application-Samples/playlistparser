@@ -7,8 +7,6 @@
 import { LIKED_ID } from './library.js';
 
 export const SOURCES = ['deezer', 'lastfm', 'musicbrainz'];
-// Must match the service's ArtistInfo.key.
-export const artistKey = (name) => name.trim().toLowerCase();
 
 export class MetadataError extends Error {
   constructor(status, path) {
@@ -19,7 +17,7 @@ export class MetadataError extends Error {
 
 export function createMetadata({ url, token, timeoutMs }, { prisma, log }) {
   const base = url.endsWith('/') ? url : `${url}/`; // so a path prefix in the URL is kept
-  let statusCache = { value: null, at: 0 };
+  let statusCache = { value: null, until: 0 };
 
   async function call(method, path, body, timeout = timeoutMs) {
     const res = await fetch(new URL(path, base), {
@@ -35,44 +33,47 @@ export function createMetadata({ url, token, timeoutMs }, { prisma, log }) {
   const warn = (err, what) => log.warn({ err: { message: err.message, status: err.status } }, `metadata service: ${what} failed`);
 
   // Last.fm: ok | not_configured | key_rejected, or unavailable when the
-  // service can't be reached. Cached briefly: every playlist page asks.
+  // service can't be reached. Answers are cached for 30 s (every playlist page
+  // asks); a failure only for 3 s, so the service coming back is noticed.
   async function lastfmStatus() {
-    if (Date.now() - statusCache.at < 30_000) return statusCache.value;
-    let value;
+    if (Date.now() < statusCache.until) return statusCache.value;
     try {
-      value = (await call('GET', 'status')).lastfm;
+      const value = (await call('GET', 'status')).lastfm;
+      statusCache = { value, until: Date.now() + 30_000 };
     } catch (err) {
       warn(err, 'status');
-      value = 'unavailable';
+      statusCache = { value: 'unavailable', until: Date.now() + 3_000 };
     }
-    statusCache = { value, at: Date.now() };
-    return value;
+    return statusCache.value;
   }
 
   // Cached facts for these recordings (ISRCs), artist names and Spotify track
-  // ids: { tempo, artists, listeners, works }, empty lists when unavailable.
+  // ids: { tempo, artists (by the names as sent), listeners, works }, empty
+  // when unavailable.
   async function lookup({ isrcs = [], artists = [], trackIds = [] }) {
     try {
       return await call('POST', 'lookup', { isrcs, artists, track_ids: trackIds });
     } catch (err) {
       warn(err, 'lookup');
-      return { tempo: [], artists: [], listeners: [], works: [] };
+      return { tempo: [], artists: {}, listeners: [], works: [] };
     }
   }
 
-  // Last.fm listener counts for normalized tracks. Starts lookups for the
-  // ones not cached yet and waits up to waitMs for them. Returns
-  // { status, cached: Map<trackId, { listeners, playcount }> }.
-  async function listeners(tracks, waitMs = 0) {
+  // Last.fm listener counts for normalized tracks. With queue (the default)
+  // starts lookups for the ones not cached yet and waits up to waitMs for
+  // them; without it only sends ids and reads the cache (for polling).
+  // Returns { status, cached: Map<trackId, { listeners, playcount }> }.
+  async function listeners(tracks, { waitMs = 0, queue = true } = {}) {
     const byId = new Map();
     for (const t of tracks) {
       if (t.id && !t.is_local && t.name && t.artists.length && !byId.has(t.id)) {
-        byId.set(t.id, { id: t.id, name: t.name, artist: t.artists[0].name });
+        byId.set(t.id, queue ? { id: t.id, name: t.name, artist: t.artists[0].name } : { id: t.id });
       }
     }
     if (!byId.size) return { status: await lastfmStatus(), cached: new Map() };
     try {
-      const res = await call('POST', 'listeners', { tracks: [...byId.values()], wait_ms: waitMs }, timeoutMs + waitMs);
+      const body = { tracks: [...byId.values()], queue, wait_ms: waitMs };
+      const res = await call('POST', 'listeners', body, timeoutMs + waitMs);
       return { status: res.status, cached: new Map(Object.entries(res.listeners)) };
     } catch (err) {
       warn(err, 'listeners');

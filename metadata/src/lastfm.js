@@ -19,8 +19,9 @@ export function createLastfm({ apiKey, cacheDays }, prisma, log) {
   // Tracks arrive as { id, name, artist } with the first artist's name.
   const eligible = (t) => t && typeof t.id === 'string' && t.name && t.artist;
 
+  // Cached counts for tracks ({ id, ... }); names aren't needed here.
   async function getCached(tracks) {
-    const ids = [...new Set(tracks.filter(eligible).map((t) => t.id))];
+    const ids = [...new Set(tracks.filter((t) => t && typeof t.id === 'string').map((t) => t.id))];
     if (!ids.length) return new Map();
     const since = new Date(Date.now() - cacheDays * 86_400_000);
     const rows = await prisma.lastfmTrack.findMany({
@@ -29,11 +30,12 @@ export function createLastfm({ apiKey, cacheDays }, prisma, log) {
     return new Map(rows.map((r) => [r.spotifyTrackId, { listeners: r.listeners, playcount: r.playcount }]));
   }
 
-  // Queue lookups for tracks that aren't cached yet. Returns a promise that
-  // resolves once all of them have been looked up.
-  async function request(tracks) {
+  // Queue lookups for tracks that aren't cached yet (pass `cached` when the
+  // caller already read the cache). Returns a promise that resolves once all
+  // of them have been looked up.
+  async function request(tracks, cached = null) {
     if (!enabled || keyRejected) return;
-    const cached = await getCached(tracks);
+    cached ??= await getCached(tracks);
     const waits = [];
     const seen = new Set();
     const fresh = [];
