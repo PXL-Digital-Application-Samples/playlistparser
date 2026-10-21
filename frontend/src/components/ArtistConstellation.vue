@@ -1,5 +1,5 @@
 <script setup>
-import { ref, shallowRef, computed, watch, onBeforeUnmount } from 'vue';
+import { ref, shallowRef, computed, watch, onMounted, onBeforeUnmount } from 'vue';
 import { forceSimulation, forceLink, forceManyBody, forceCenter, forceCollide, forceX, forceY } from 'd3-force';
 import { useRouter } from 'vue-router';
 import { familyColor } from '../families.js';
@@ -37,13 +37,11 @@ function build() {
     .velocityDecay(0.25)
     .stop();
   for (let i = 0; i < 320; i++) sim.tick();
-  // Label the 14 biggest artists and all suggestions; others on hover.
-  const big = new Set([...nodes].filter((n) => !n.ghost).sort((a, b) => b.count - a.count).slice(0, 14).map((n) => n.id));
-  for (const n of nodes) n.labelled = n.ghost || big.has(n.id);
   clamp(nodes);
   graph.value = { nodes, links };
 }
 watch(() => [props.nodes, props.links], build, { immediate: true });
+onMounted(() => frame.value++); // measure labels with the page font
 
 function clamp(nodes) {
   for (const n of nodes) {
@@ -131,8 +129,72 @@ function open(e, n) {
   e.preventDefault();
   router.push(href(n));
 }
-const short = (s) => (s.length > 16 ? `${s.slice(0, 15)}…` : s);
-const lx = (n) => Math.max(48, Math.min(W - 48, n.x)); // labels never run off the sides
+// ---- Labels -------------------------------------------------------------------
+// Every artist gets a name. Each one goes to the first free spot around its
+// dot (below, above, right, left, then diagonals) that doesn't cover another
+// name or dot; the biggest artists choose first. When nothing is free, the
+// spot that covers the least wins. Recomputed on every frame while dragging.
+const FONT = 10.5;
+const LINE = 12;
+const short = (s) => (s.length > 24 ? `${s.slice(0, 23)}…` : s);
+let measureCtx = null;
+const widths = new Map();
+function textWidth(text) {
+  // Before the chart is mounted the page font isn't known yet: measure with
+  // a generic one, and again with the real font once it is.
+  const family = svg.value ? getComputedStyle(svg.value).fontFamily : 'sans-serif';
+  const key = `${family}|${text}`;
+  if (!widths.has(key)) {
+    measureCtx ??= document.createElement('canvas').getContext('2d');
+    measureCtx.font = `${FONT}px ${family}`;
+    widths.set(key, measureCtx.measureText(text).width + 4);
+  }
+  return widths.get(key);
+}
+function overlap(a, b) {
+  const w = Math.min(a.x + a.w, b.x + b.w) - Math.max(a.x, b.x);
+  const h = Math.min(a.y + a.h, b.y + b.h) - Math.max(a.y, b.y);
+  return w > 0 && h > 0 ? w * h : 0;
+}
+function placeLabels(nodes) {
+  const dots = nodes.map((n) => ({ x: n.x - n.r - 1, y: n.y - n.r - 1, w: n.r * 2 + 2, h: n.r * 2 + 2, id: n.id }));
+  const placed = [];
+  const out = new Map();
+  const order = [...nodes].sort((a, b) => (a.ghost - b.ghost) || (b.count - a.count));
+  for (const n of order) {
+    const text = short(n.name);
+    const w = textWidth(text);
+    const d = n.r + 3;
+    const spots = [
+      [n.x, n.y + d + LINE - 2, 'middle'], [n.x, n.y - d - 3, 'middle'],
+      [n.x + d + 1, n.y + 4, 'start'], [n.x - d - 1, n.y + 4, 'end'],
+      [n.x + d * 0.7, n.y + d * 0.7 + LINE - 3, 'start'], [n.x - d * 0.7, n.y + d * 0.7 + LINE - 3, 'end'],
+      [n.x + d * 0.7, n.y - d * 0.7 - 2, 'start'], [n.x - d * 0.7, n.y - d * 0.7 - 2, 'end'],
+      // A second ring, a line further out, for crowded spots.
+      [n.x, n.y + d + LINE * 2 - 2, 'middle'], [n.x, n.y - d - LINE - 3, 'middle'],
+      [n.x + d + 1, n.y + 4 + LINE, 'start'], [n.x - d - 1, n.y + 4 + LINE, 'end'],
+      [n.x + d + 1, n.y + 4 - LINE, 'start'], [n.x - d - 1, n.y + 4 - LINE, 'end'],
+    ];
+    let best = null;
+    for (const [x, y, anchor] of spots) {
+      const left = anchor === 'middle' ? x - w / 2 : anchor === 'start' ? x : x - w;
+      const box = { x: left, y: y - LINE + 2, w, h: LINE };
+      const off = Math.max(0, -box.x) + Math.max(0, box.x + box.w - W) + Math.max(0, -box.y) + Math.max(0, box.y + box.h - H);
+      let cost = off * 50;
+      for (const p of placed) cost += overlap(box, p) * 10;
+      for (const o of dots) if (o.id !== n.id) cost += overlap(box, o);
+      if (!best || cost < best.cost) best = { x, y, anchor, box, cost };
+      if (cost === 0) break;
+    }
+    placed.push(best.box);
+    out.set(n.id, { x: best.x, y: best.y, anchor: best.anchor, text });
+  }
+  return out;
+}
+const labels = computed(() => {
+  void frame.value; // positions change on every simulation tick
+  return placeLabels(graph.value.nodes);
+});
 </script>
 
 <template>
@@ -181,12 +243,12 @@ const lx = (n) => Math.max(48, Math.min(W - 48, n.x)); // labels never run off t
           :stroke-dasharray="n.ghost ? '3 2' : null"
         />
         <text
-          v-if="hover ? neighbours.has(n.id) : n.labelled"
-          :x="lx(n)" :y="n.y + n.r + 11"
-          text-anchor="middle"
+          v-if="labels.has(n.id)"
+          :x="labels.get(n.id).x" :y="labels.get(n.id).y"
+          :text-anchor="labels.get(n.id).anchor"
           class="label"
           :class="{ ghost: n.ghost, strong: hover === n.id }"
-        >{{ short(n.name) }}</text>
+        >{{ labels.get(n.id).text }}</text>
       </a>
     </svg>
     <p class="muted small">
