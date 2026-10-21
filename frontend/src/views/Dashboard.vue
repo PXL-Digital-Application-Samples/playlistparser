@@ -5,8 +5,7 @@ import { plural } from '../playlistCache.js';
 import { lens } from '../settings.js';
 import { overview, sync, syncing, syncVersion, ago } from '../status.js';
 import { highlightCards } from '../highlights.js';
-import { coverTint } from '../coverTint.js';
-import { setBackdropTint } from '../backdrop.js';
+import { tintFromCover } from '../backdrop.js';
 import { playIntro } from '../intro.js';
 import { burstFrom } from '../confetti.js';
 import { INSIGHT_TABS } from '../nav.js';
@@ -45,7 +44,7 @@ const topArtists = computed(() => {
 });
 const totals = computed(() => overview.value?.totals);
 // The background takes the colour of your #1 artist lately.
-watch(() => topArtists.value[0]?.image, async (url) => url && setBackdropTint(await coverTint(url)), { immediate: true });
+watch(() => topArtists.value[0]?.image, (url) => url && tintFromCover(url), { immediate: true });
 const health = computed(() => overview.value?.health);
 const firstName = computed(() => (props.me?.displayName || '').split(' ')[0]);
 

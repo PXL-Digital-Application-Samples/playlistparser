@@ -11,7 +11,7 @@ import { setTitle } from './title.js';
 import { INSIGHT_TABS } from './nav.js';
 import { reveal } from './motion.js';
 import { installTransitions } from './transitions.js';
-import { setBackdropTint } from './backdrop.js';
+import { resetBackdropTint } from './backdrop.js';
 import { installKonami } from './disco.js';
 
 // `section` = the main navigation item a page belongs to (highlighted in the
@@ -42,8 +42,9 @@ const router = createRouter({
 });
 installTransitions(router);
 installKonami();
-router.afterEach((to) => {
-  setBackdropTint(null); // pages with a cover set their own
+router.afterEach((to, from, failure) => {
+  if (failure) return; // cancelled or aborted: another navigation took over
+  resetBackdropTint(); // pages with a cover set their own
   const tab = INSIGHT_TABS.find((t) => t.key === to.params.tab);
   setTitle(tab ? `${tab.label} · Insights` : to.meta.title);
 });

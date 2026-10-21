@@ -18,6 +18,7 @@ let mediaSource = null;
 let synth = null;
 let freq = null;
 let raf = 0;
+let generation = 0; // bumped by every play() and stop(); late results of older ones are ignored
 
 function ensureAudio() {
   if (ctx) return;
@@ -65,8 +66,10 @@ export async function play(t) {
   const key = trackKey(t);
   if (current.value?.key === key && (status.value === 'playing' || status.value === 'loading')) return stop();
   stop();
+  const mine = ++generation;
   ensureAudio();
   if (ctx.state === 'suspended') await ctx.resume();
+  if (mine !== generation) return;
   current.value = { key, name: t.name, artist: t.artist, image: t.image ?? null };
   status.value = 'loading';
   progress.value = 0;
@@ -76,7 +79,7 @@ export async function play(t) {
       startSynth(bpm.value);
     } else {
       const p = await endpoints.preview({ isrc: t.isrc, title: t.name, artist: t.artist });
-      if (current.value?.key !== key) return; // another song was started meanwhile
+      if (mine !== generation) return; // stopped, or another song started meanwhile
       if (p.status !== 'ok') {
         status.value = 'none';
         return;
@@ -85,16 +88,17 @@ export async function play(t) {
       audio.src = p.preview;
       await audio.play();
     }
-    if (current.value?.key !== key) return;
+    if (mine !== generation) return;
     status.value = 'playing';
     cancelAnimationFrame(raf);
     raf = requestAnimationFrame(tick);
   } catch {
-    if (current.value?.key === key) status.value = 'error';
+    if (mine === generation) status.value = 'error';
   }
 }
 
 export function stop() {
+  generation++;
   cancelAnimationFrame(raf);
   if (audio) {
     audio.pause();

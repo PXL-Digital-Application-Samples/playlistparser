@@ -4,8 +4,7 @@ import { useRouter } from 'vue-router';
 import { endpoints, describeError, spotifyUrl } from '../api.js';
 import { plural } from '../playlistCache.js';
 import { setTitle } from '../title.js';
-import { coverTint } from '../coverTint.js';
-import { setBackdropTint } from '../backdrop.js';
+import { tintFromCover } from '../backdrop.js';
 import { syncVersion } from '../status.js';
 import { heroName, heroFallback } from '../transitions.js';
 import Icon from '../components/Icon.vue';
@@ -37,10 +36,7 @@ async function load() {
 watch(() => [props.me, props.id], load, { immediate: true });
 watch(syncVersion, load);
 watch(() => album.value?.name, (n) => setTitle(n || 'Album'), { immediate: true });
-watch(() => album.value?.image_lg || album.value?.image, async (url) => {
-  tint.value = await coverTint(url);
-  setBackdropTint(tint.value);
-}, { immediate: true });
+watch(() => album.value?.image_lg || album.value?.image, async (url) => { tint.value = await tintFromCover(url); }, { immediate: true });
 
 const fmtLen = (ms) => {
   if (!ms) return '';

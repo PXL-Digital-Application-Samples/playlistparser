@@ -42,7 +42,12 @@ watch(calm, (c) => {
 // Animates the number at the start of an element's text ("1,673", "36.4%",
 // "42 h") from 0, keeping its format. Text without a leading number is left.
 export function countUp(el, { duration = 1.2, delay = 0 } = {}) {
-  const text = el.textContent.trim();
+  // Only a single text node, written in place: replacing Vue's nodes (or
+  // restoring an old value after Vue updated it) would leave stale numbers.
+  const node = el.childNodes.length === 1 && el.firstChild.nodeType === Node.TEXT_NODE ? el.firstChild : null;
+  if (!node) return;
+  const original = node.nodeValue;
+  const text = original.trim();
   const m = text.match(/^([\d][\d,.]*)(.*)$/s);
   if (!m) return;
   const raw = m[1];
@@ -54,11 +59,19 @@ export function countUp(el, { duration = 1.2, delay = 0 } = {}) {
     ? v.toLocaleString('en-US', { minimumFractionDigits: decimals, maximumFractionDigits: decimals })
     : v.toFixed(decimals));
   const state = { v: 0 };
-  el.textContent = fmt(0) + m[2];
-  gsap.to(state, {
+  let written = fmt(0) + m[2];
+  node.nodeValue = written;
+  const ours = () => node.parentNode === el && node.nodeValue === written;
+  const tween = gsap.to(state, {
     v: target, duration, delay, ease: 'power3.out',
-    onUpdate: () => (el.textContent = fmt(state.v) + m[2]),
-    onComplete: () => (el.textContent = text),
+    onUpdate: () => {
+      if (!ours()) return tween.kill(); // Vue has shown a newer value
+      written = fmt(state.v) + m[2];
+      node.nodeValue = written;
+    },
+    onComplete: () => {
+      if (ours()) node.nodeValue = original;
+    },
   });
 }
 

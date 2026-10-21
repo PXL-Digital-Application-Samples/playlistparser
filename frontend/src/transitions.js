@@ -29,6 +29,10 @@ export function installTransitions(router) {
   document.addEventListener('click', onClick, true);
   let finish = null;
   router.beforeResolve((to, from) => {
+    // A transition still waiting for its page must be finished first, or the
+    // browser keeps showing its old snapshot until it times out.
+    finish?.();
+    finish = null;
     if (!document.startViewTransition || !motionOn() || !from.matched.length || to.path === from.path) return;
     return new Promise((resolve) => {
       const t = document.startViewTransition(() => new Promise((done) => {

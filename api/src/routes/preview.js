@@ -27,11 +27,14 @@ export default async function previewRoutes(fastify) {
     if (!track && title) {
       // Deezer's field syntax (artist:"…" track:"…") often finds nothing; a
       // plain search does, so search plainly and pick the best match.
-      const firstArtist = artist.split(',')[0].trim();
-      const s = await getJson(`https://api.deezer.com/search?${new URLSearchParams({ q: `${firstArtist} ${title}`, limit: '5' })}`);
+      // `artist` may list several artists ("A, B") or be one name with a
+      // comma ("Tyler, The Creator"): search with all of it and accept a hit
+      // whose artist appears in it.
+      const s = await getJson(`https://api.deezer.com/search?${new URLSearchParams({ q: `${artist} ${title}`, limit: '5' })}`);
       const norm = (x) => String(x || '').toLowerCase().replace(/\(.*?\)|\[.*?\]| - .*$/g, '').replace(/[^\p{L}\p{N}]+/gu, '');
       const hits = (s.data || []).filter((h) => h.preview);
-      const hit = hits.find((h) => norm(h.title) === norm(title) && norm(h.artist?.name) === norm(firstArtist))
+      const ours = norm(artist);
+      const hit = hits.find((h) => norm(h.title) === norm(title) && norm(h.artist?.name) && ours.includes(norm(h.artist.name)))
         ?? hits.find((h) => norm(h.title) === norm(title))
         ?? hits[0];
       // Search results don't include the tempo; the track itself does.

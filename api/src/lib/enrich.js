@@ -225,12 +225,12 @@ async function getJson(limit, url, headers = {}) {
       await new Promise((r) => setTimeout(r, 3000 * (attempt + 1)));
       continue;
     }
-    // Other client errors (404, 400 for a query it can't parse, ...) won't
-    // change on a retry. Return the error body: MusicBrainz then finds no
-    // match and the result is cached instead of looked up on every run,
-    // while Last.fm's error codes (e.g. 10 = invalid key) still throw and
-    // aren't cached.
-    if (res.status >= 400 && res.status < 500 && res.status !== 429) return res.json().catch(() => ({}));
+    // Errors that won't change on a retry (not found, a query it can't
+    // parse): return the error body, so MusicBrainz finds no match and the
+    // result is cached instead of looked up on every run, while Last.fm's
+    // error codes still throw. Others (401/403 when a service blocks us)
+    // throw and are retried next run, not cached as "nothing found".
+    if ([400, 404, 410].includes(res.status)) return res.json().catch(() => ({}));
     if (!res.ok) throw new Error(`${new URL(url).host} ${res.status}`);
     return res.json();
   }

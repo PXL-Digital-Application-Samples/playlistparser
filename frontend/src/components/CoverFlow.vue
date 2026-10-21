@@ -18,6 +18,14 @@ const pos = ref(0); // fractional index of the centred cover
 const center = computed(() => Math.max(0, Math.min(props.items.length - 1, Math.round(pos.value))));
 const current = computed(() => props.items[center.value]);
 const SPACING = 64;
+// Only covers near the centre are rendered (the rest are hidden anyway).
+const WINDOW = 10;
+const windowed = computed(() => {
+  const c = Math.round(pos.value);
+  const out = [];
+  for (let i = Math.max(0, c - WINDOW); i <= Math.min(props.items.length - 1, c + WINDOW); i++) out.push({ it: props.items[i], i });
+  return out;
+});
 const SIDE = 150;
 
 function style(i) {
@@ -47,10 +55,15 @@ function goTo(i, duration = 0.55) {
 // ---- Dragging with momentum -------------------------------------------------
 let drag = null;
 let suppressClick = false; // a drag that ends on a cover isn't a click
+// Move/up are followed on the window (not with pointer capture, which would
+// retarget the click away from the cover that was pressed).
 function down(e) {
+  if (e.button !== 0) return;
   tween?.kill();
   drag = { x: e.clientX, start: pos.value, last: e.clientX, t: performance.now(), v: 0, moved: 0 };
-  e.currentTarget.setPointerCapture?.(e.pointerId);
+  addEventListener('pointermove', move);
+  addEventListener('pointerup', up, { once: true });
+  addEventListener('pointercancel', up, { once: true });
 }
 function move(e) {
   if (!drag) return;
@@ -63,6 +76,7 @@ function move(e) {
   pos.value = Math.max(-0.4, Math.min(props.items.length - 0.6, drag.start - (e.clientX - drag.x) / (SPACING * 1.4)));
 }
 function up() {
+  removeEventListener('pointermove', move);
   if (!drag) return;
   const fling = -drag.v * 6; // momentum in covers
   const wasDrag = drag.moved > 6;
@@ -80,8 +94,12 @@ function click(i) {
 }
 
 let wheelLock = 0;
+// Only sideways scrolling (or Shift + wheel) moves covers; vertical scrolling
+// keeps scrolling the page.
 function wheel(e) {
-  const d = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY;
+  const sideways = Math.abs(e.deltaX) > Math.abs(e.deltaY);
+  if (!sideways && !e.shiftKey) return;
+  const d = sideways ? e.deltaX : e.deltaY;
   if (!d) return;
   e.preventDefault();
   const now = performance.now();
@@ -104,6 +122,7 @@ onMounted(() => stage.value?.addEventListener('wheel', wheel, { passive: false }
 onBeforeUnmount(() => {
   tween?.kill();
   stage.value?.removeEventListener('wheel', wheel);
+  removeEventListener('pointermove', move);
 });
 </script>
 
@@ -118,13 +137,10 @@ onBeforeUnmount(() => {
       :aria-activedescendant="current ? `flow-${current.id}` : null"
       @keydown="key"
       @pointerdown="down"
-      @pointermove="move"
-      @pointerup="up"
-      @pointercancel="up"
     >
       <div class="track">
         <div
-          v-for="(it, i) in items"
+          v-for="{ it, i } in windowed"
           :id="`flow-${it.id}`"
           :key="it.id"
           class="item"
@@ -151,7 +167,7 @@ onBeforeUnmount(() => {
       aria-label="Scroll through playlists"
       @input="goTo(Number($event.target.value), 0.3)"
     />
-    <p class="hint">Drag, scroll or use the arrow keys · click the middle cover to open it · {{ plural(items.length, 'playlist') }}</p>
+    <p class="hint">Drag, scroll sideways or use the arrow keys · click the middle cover to open it · {{ plural(items.length, 'playlist') }}</p>
   </div>
 </template>
 

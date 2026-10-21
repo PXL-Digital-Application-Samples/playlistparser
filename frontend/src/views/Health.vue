@@ -37,7 +37,7 @@ async function load() {
   }
   // Links like /health#unplayable land on their section once it exists.
   await nextTick();
-  if (dupes.value?.status === 'ok' && !dupes.value.total && !unplayable.value?.total) burst({ count: 160 });
+  if (dupes.value?.status === 'ok' && dupes.value.total === 0 && unplayable.value?.status === 'ok' && unplayable.value.total === 0) burst({ count: 160 });
   if (route.hash) document.querySelector(route.hash)?.scrollIntoView({ block: 'start' });
 }
 watch(() => props.me, load, { immediate: true });

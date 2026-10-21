@@ -5,8 +5,7 @@ import { sanitizeDescription } from '../sanitize.js';
 import { cachedPlaylist, plural } from '../playlistCache.js';
 import { lens } from '../settings.js';
 import { setTitle } from '../title.js';
-import { coverTint } from '../coverTint.js';
-import { setBackdropTint } from '../backdrop.js';
+import { tintFromCover } from '../backdrop.js';
 import Icon from '../components/Icon.vue';
 import LikedCover from '../components/LikedCover.vue';
 import { heroName } from '../transitions.js';
@@ -39,7 +38,7 @@ watch(lens, async (next) => {
 const preview = computed(() => cachedPlaylist(props.id));
 const info = computed(() => stats.value?.playlist ?? preview.value);
 watch(() => info.value?.name, (name) => setTitle(name || 'Playlist'), { immediate: true });
-watch(() => info.value?.image, async (url) => setBackdropTint(url ? await coverTint(url) : 'rgb(127 107 216)'), { immediate: true });
+watch(() => info.value?.image, (url) => tintFromCover(url, 'rgb(127 107 216)'), { immediate: true });
 
 // ---- Formatting ------------------------------------------------------------
 const fmtNumber = (n) => (typeof n === 'number' ? n.toLocaleString() : '—');
