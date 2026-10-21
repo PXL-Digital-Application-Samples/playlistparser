@@ -39,7 +39,8 @@ const playing = computed(() => mine.value && (status.value === 'playing' || stat
 }
 .play-btn.center { inset: 0; margin: auto; }
 .play-btn svg { width: 55%; height: 55%; margin-left: 8%; }
-:global(.playable:hover) .play-btn, :global(.playable:focus-within) .play-btn, .play-btn:focus-visible, .play-btn.on {
+/* Wrapped whole in :global: Vue drops anything after a :global(...) part. */
+:global(.playable:hover .play-btn), :global(.playable:focus-within .play-btn), .play-btn:focus-visible, .play-btn.on {
   opacity: 1; transform: none;
 }
 .play-btn:hover { transform: scale(1.08); }
