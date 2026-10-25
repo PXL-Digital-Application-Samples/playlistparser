@@ -11,8 +11,8 @@ A Spotify library analyzer: a Vue 3 frontend and a Fastify + Prisma API backed b
 | Component | Technology | Notes |
 |-----------|------------|-------|
 | `frontend/` | Vue 3, Vue Router, Vite | Static single-page app. Calls the API with cookies (`credentials: 'include'`). |
-| `api/` | Node.js 22+, Fastify 5, Prisma 7 (node-postgres driver adapter) | Spotify OAuth, statistics, CSV export, library sync. The only service the browser talks to. Stateless: all state lives in PostgreSQL. |
-| `metadata/` | Node.js 22+, Fastify 5, Prisma 7 | **Internal** service for public music data: Last.fm listener counts, tags and similar artists, Deezer tempo and song previews, MusicBrainz origins and composers, and the enrichment jobs that look them up. Only the API calls it (with a shared token); it never sees user accounts or Spotify tokens. Stateless: its caches and job progress live in PostgreSQL. |
+| `api/` | Node.js 24+, Fastify 5, Prisma 7 (node-postgres driver adapter) | Spotify OAuth, statistics, CSV export, library sync. The only service the browser talks to. Stateless: all state lives in PostgreSQL. |
+| `metadata/` | Node.js 24+, Fastify 5, Prisma 7 | **Internal** service for public music data: Last.fm listener counts, tags and similar artists, Deezer tempo and song previews, MusicBrainz origins and composers, and the enrichment jobs that look them up. Only the API calls it (with a shared token); it never sees user accounts or Spotify tokens. Stateless: its caches and job progress live in PostgreSQL. |
 | Database | PostgreSQL | API: users, sessions, encrypted Spotify tokens, export jobs, synced library. Metadata service: caches of public music data and enrichment progress, in its own schema (or database) with its own migrations. |
 
 ```text
@@ -242,7 +242,7 @@ GET  /metrics                            Prometheus metrics
 
 ## Local development
 
-Requirements: Node.js 22.9+ and Docker (for PostgreSQL only).
+Requirements: Node.js 24.22.1+ (earlier releases carry the Brotli decoder flaw CVE-2026-111497) and Docker (for PostgreSQL only).
 
 ```bash
 # 1. Database
